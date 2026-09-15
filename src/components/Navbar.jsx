@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Navigation, 
   Bell, 
@@ -11,8 +11,10 @@ import {
   Radio, 
   Compass,
   Layers,
-  User
+  User,
+  Zap
 } from 'lucide-react';
+import { requestScreenWakeLock, releaseScreenWakeLock, isWakeLockActive } from '../services/nativeLocation';
 
 export default function Navbar({
   userPos,
@@ -30,6 +32,18 @@ export default function Navbar({
   user,
   nearestReminder,
 }) {
+  const [travelMode, setTravelMode] = useState(false);
+
+  const handleToggleTravelMode = async () => {
+    if (!travelMode) {
+      await requestScreenWakeLock();
+      setTravelMode(true);
+    } else {
+      await releaseScreenWakeLock();
+      setTravelMode(false);
+    }
+  };
+
   return (
     <header className="navbar">
       <div className="brand">
@@ -63,6 +77,20 @@ export default function Navbar({
               <span className="show-mobile-only">Live</span>
             </>
           )}
+        </button>
+
+        {/* Pocket / Travel Active Tracking Mode */}
+        <button
+          className={`btn-icon ${travelMode ? 'active' : ''}`}
+          onClick={handleToggleTravelMode}
+          title={travelMode ? 'Travel / Pocket Mode: ACTIVE (Keeps GPS tracking live in pocket)' : 'Turn on Travel Mode (Keeps GPS live without sleep)'}
+          style={{ 
+            color: travelMode ? '#fbbf24' : undefined, 
+            borderColor: travelMode ? 'rgba(251, 191, 36, 0.5)' : undefined,
+            background: travelMode ? 'rgba(251, 191, 36, 0.15)' : undefined,
+          }}
+        >
+          <Zap size={16} />
         </button>
 
         {/* Notifications Permission Button */}

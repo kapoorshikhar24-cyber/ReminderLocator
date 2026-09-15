@@ -34,6 +34,12 @@ import {
   requestNotificationPermission 
 } from './services/notifications';
 import { reverseGeocode } from './services/geocoding';
+import { 
+  sendArrivalAlert, 
+  requestAllNativePermissions, 
+  requestScreenWakeLock, 
+  releaseScreenWakeLock 
+} from './services/nativeLocation';
 import { List, Map as MapIcon, Compass, PlusCircle, Plus, Check } from 'lucide-react';
 
 export default function App() {
@@ -213,8 +219,9 @@ export default function App() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, [isSimulating]);
 
-  // Request browser notification permission
+  // Request notification and native background permissions
   const handleRequestNotification = async () => {
+    await requestAllNativePermissions();
     const perm = await requestNotificationPermission();
     setNotificationPermission(perm);
   };
@@ -270,30 +277,22 @@ export default function App() {
     });
   }, [userPos, reminders]);
 
-  // Trigger Execution: Modal + Audio + Push Notification
+  // Trigger Execution: Modal + Sound + System Push Notification (Pocket / Lock Screen)
   const executeTrigger = (reminder, eventType, distance) => {
-    // 1. Play sound
-    if (soundEnabled) {
-      if (eventType === 'exit') {
-        playDepartureChime();
-      } else {
-        playArrivalChime();
-      }
-    }
-
-    // 2. Push Notification
     const notifTitle =
       eventType === 'exit'
         ? `Leaving: ${reminder.title}`
         : `Arrived at ${reminder.location.name || 'Target'}!`;
     const notifBody = reminder.notes || `You are within ${reminder.location.radius}m of your reminder location.`;
 
-    sendNotification(notifTitle, {
+    // Native & Web notification with sound & vibration
+    sendArrivalAlert({
+      title: notifTitle,
       body: notifBody,
-      tag: eventType === 'exit' ? 'departure' : 'arrival',
+      reminderId: reminder.id,
     });
 
-    // 3. Show In-App Alert Modal
+    // Show In-App Alert Modal if on screen
     setTriggeredReminder(reminder);
   };
 
