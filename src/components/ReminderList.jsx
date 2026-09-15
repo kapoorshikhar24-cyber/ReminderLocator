@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Search, Plus, MapPin, CheckCircle2, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { Search, Plus, MapPin, CheckCircle2, SlidersHorizontal, Sparkles, Tag } from 'lucide-react';
 import ReminderCard from './ReminderCard';
 import { calculateDistance } from '../services/geolocation';
+import { CATEGORIES } from '../types/reminder';
 
 export default function ReminderList({
   reminders,
@@ -18,6 +19,7 @@ export default function ReminderList({
   onSeedLocalSamples,
 }) {
   const [sortByNearest, setSortByNearest] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
   // Filter logic
   let filtered = reminders.filter((rem) => {
@@ -28,6 +30,11 @@ export default function ReminderList({
       const matchNotes = (rem.notes || '').toLowerCase().includes(q);
       const matchLoc = rem.location?.name?.toLowerCase().includes(q);
       if (!matchTitle && !matchNotes && !matchLoc) return false;
+    }
+
+    // Category filter
+    if (selectedCategory !== 'all' && rem.category !== selectedCategory) {
+      return false;
     }
 
     // Tabs
@@ -101,6 +108,72 @@ export default function ReminderList({
           >
             💖 Done <span className="tab-count">{counts.completed}</span>
           </button>
+        </div>
+
+        {/* Category Filter Chips Bar */}
+        <div 
+          className="category-chips-bar"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            overflowX: 'auto',
+            padding: '2px 0 4px 0',
+            scrollbarWidth: 'none',
+          }}
+        >
+          <button
+            type="button"
+            className={`chip-btn ${selectedCategory === 'all' ? 'active' : ''}`}
+            onClick={() => setSelectedCategory('all')}
+            style={{
+              padding: '4px 10px',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              border: selectedCategory === 'all' ? '1.5px solid var(--color-brand)' : '1px solid var(--border-subtle)',
+              background: selectedCategory === 'all' ? 'var(--color-brand-glow)' : 'var(--bg-card)',
+              color: selectedCategory === 'all' ? 'var(--color-brand)' : 'var(--text-secondary)',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            All Tags
+          </button>
+          {CATEGORIES.map((c) => {
+            const isCatActive = selectedCategory === c.id;
+            const countInCat = reminders.filter((r) => r.category === c.id).length;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                className={`chip-btn ${isCatActive ? 'active' : ''}`}
+                onClick={() => setSelectedCategory(isCatActive ? 'all' : c.id)}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  border: isCatActive ? `1.5px solid ${c.color}` : '1px solid var(--border-subtle)',
+                  background: isCatActive ? c.bg : 'var(--bg-card)',
+                  color: isCatActive ? c.color : 'var(--text-secondary)',
+                  whiteSpace: 'nowrap',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span>{c.emoji}</span>
+                <span>{c.shortLabel || c.label}</span>
+                {countInCat > 0 && (
+                  <span style={{ opacity: 0.8, fontSize: '0.68rem', fontWeight: 800 }}>({countInCat})</span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Sorting & seed helpers */}

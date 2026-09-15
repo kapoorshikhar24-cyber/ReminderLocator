@@ -219,36 +219,78 @@ export default function ReminderModal({
             />
           </div>
 
-          {/* Category & Priority Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div className="form-group">
-              <label className="form-label">🏷️ Category</label>
-              <select
-                className="form-select"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
+          {/* Category Pill Selector */}
+          <div className="form-group">
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span>🏷️ Category & Tag</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Tap to assign</span>
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {CATEGORIES.map((c) => {
+                const isSelected = category === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setCategory(c.id)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      borderRadius: 'var(--radius-full)',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      border: isSelected ? `2px solid ${c.color}` : '1px solid var(--border-subtle)',
+                      background: isSelected ? c.bg : 'var(--bg-card)',
+                      color: isSelected ? c.color : 'var(--text-secondary)',
+                      transform: isSelected ? 'scale(1.03)' : 'scale(1)',
+                      boxShadow: isSelected ? `0 0 12px ${c.color}35` : 'none',
+                    }}
+                  >
+                    <span>{c.emoji}</span>
+                    <span>{c.shortLabel || c.label}</span>
+                  </button>
+                );
+              })}
             </div>
+          </div>
 
-            <div className="form-group">
-              <label className="form-label">⭐ Priority</label>
-              <select
-                className="form-select"
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-              >
-                {PRIORITIES.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
+          {/* Priority Row */}
+          <div className="form-group">
+            <label className="form-label" style={{ marginBottom: '8px' }}>⭐ Urgency Priority</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {PRIORITIES.map((p) => {
+                const isSelected = priority === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setPriority(p.id)}
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      border: isSelected ? `2px solid ${p.color}` : '1px solid var(--border-subtle)',
+                      background: isSelected ? `${p.color}18` : 'var(--bg-card)',
+                      color: isSelected ? p.color : 'var(--text-secondary)',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span>{p.emoji}</span>
+                    <span>{p.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

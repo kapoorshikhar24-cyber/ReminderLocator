@@ -74,14 +74,52 @@ export async function getDevicePosition() {
   });
 }
 
+export const BATTERY_MODES = [
+  {
+    id: 'high',
+    name: 'High Precision',
+    badge: '🏃 Sports & Walking',
+    description: 'Fastest GPS updates (3-5s). Pinpoint accuracy for tight store/entrance geofences (50m-100m).',
+    enableHighAccuracy: true,
+    timeout: 10000,
+    maximumAge: 2000,
+  },
+  {
+    id: 'balanced',
+    name: 'Balanced Mode',
+    badge: '⚖️ Daily Transit',
+    description: 'Standard updates (15-20s). Smooth movement with optimal battery preservation.',
+    enableHighAccuracy: true,
+    timeout: 15000,
+    maximumAge: 10000,
+  },
+  {
+    id: 'saver',
+    name: 'Battery Saver',
+    badge: '🔋 Ultra Low Drain',
+    description: 'Coarse / Wi-Fi & cell tower updates (45-60s). Ideal for highway travel or low battery.',
+    enableHighAccuracy: false,
+    timeout: 30000,
+    maximumAge: 30000,
+  },
+];
+
 /**
  * Watch device GPS position with live updates across native Android and Web
  */
-export async function watchDevicePosition(onLocation, onError) {
+export async function watchDevicePosition(onLocation, onError, batteryMode = 'balanced') {
+  const modeConfig = BATTERY_MODES.find((m) => m.id === batteryMode) || BATTERY_MODES[1];
+
+  const watchOptions = {
+    enableHighAccuracy: modeConfig.enableHighAccuracy,
+    timeout: modeConfig.timeout,
+    maximumAge: modeConfig.maximumAge,
+  };
+
   if (isNative()) {
     try {
       const watchId = await Geolocation.watchPosition(
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 },
+        watchOptions,
         (position, err) => {
           if (err) {
             onError?.(err);
@@ -113,7 +151,7 @@ export async function watchDevicePosition(onLocation, onError) {
         });
       },
       onError,
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+      watchOptions
     );
     return () => navigator.geolocation.clearWatch(id);
   }
@@ -124,9 +162,9 @@ export async function watchDevicePosition(onLocation, onError) {
 /**
  * Send alert notification that pops on lock screen and in pocket
  */
-export async function sendArrivalAlert({ title, body, reminderId }) {
+export async function sendArrivalAlert({ title, body, reminderId, soundProfile = 'crystal' }) {
   // Always play audio & trigger vibration
-  playArrivalChime();
+  playArrivalChime(soundProfile);
   triggerVibration([300, 150, 300, 150, 500]);
 
   if (isNative()) {

@@ -71,22 +71,46 @@ export default function ReminderCard({
           </div>
         </div>
 
-        {/* Cute Priority chip */}
-        <span
-          className="priority-pill"
-          style={{
-            fontSize: '0.72rem',
-            fontWeight: 800,
-            color: priority.color,
-            background: `${priority.color}18`,
-            border: `1px solid ${priority.color}40`,
-            padding: '3px 9px',
-            borderRadius: 'var(--radius-full)',
-            letterSpacing: '0.02em',
-          }}
-        >
-          {priority.label}
-        </span>
+        {/* Tags & Priority Chips */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Category Tag Badge */}
+          <span
+            className="category-pill"
+            style={{
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              color: category.color,
+              background: category.bg,
+              border: `1px solid ${category.color}40`,
+              padding: '3px 8px',
+              borderRadius: 'var(--radius-full)',
+              letterSpacing: '0.02em',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <span>{category.emoji}</span>
+            <span>{category.shortLabel || category.label}</span>
+          </span>
+
+          {/* Cute Priority chip */}
+          <span
+            className="priority-pill"
+            style={{
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              color: priority.color,
+              background: `${priority.color}18`,
+              border: `1px solid ${priority.color}40`,
+              padding: '3px 8px',
+              borderRadius: 'var(--radius-full)',
+              letterSpacing: '0.02em',
+            }}
+          >
+            {priority.label}
+          </span>
+        </div>
       </div>
 
       {reminder.notes && <p className="card-notes">{reminder.notes}</p>}

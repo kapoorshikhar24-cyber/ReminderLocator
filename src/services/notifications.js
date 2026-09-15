@@ -16,22 +16,97 @@ function getAudioContext() {
   return audioCtx;
 }
 
+export const SOUND_PROFILES = [
+  { id: 'crystal', label: 'Melodic Crystal', description: 'Sweet uplifting 4-note chime', emoji: '✨' },
+  { id: 'radar', label: 'Pulse Radar', description: 'Crisp dual ping alert', emoji: '📡' },
+  { id: 'marimba', label: 'Gentle Marimba', description: 'Warm ambient acoustic chord', emoji: '🪵' },
+  { id: 'subtle', label: 'Subtle Tick', description: 'Discreet minimal double blip', emoji: '💧' },
+];
+
 /**
- * Play a cheerful, cute melodic arrival chime (C5 -> E5 -> G5 -> C6) using Web Audio API
+ * Play a customizable arrival chime using Web Audio API
  */
-export function playArrivalChime() {
+export function playArrivalChime(profile = 'crystal') {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
 
     const now = ctx.currentTime;
-    
-    // Notes: C5 (523.25 Hz), E5 (659.25 Hz), G5 (783.99 Hz), C6 (1046.50 Hz)
+
+    if (profile === 'radar') {
+      // Crisp radar dual ping
+      const pings = [
+        { freq: 1200, time: 0.0, duration: 0.22, gain: 0.28 },
+        { freq: 1600, time: 0.14, duration: 0.35, gain: 0.32 },
+      ];
+      pings.forEach((p) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(p.freq, now + p.time);
+        gain.gain.setValueAtTime(0, now + p.time);
+        gain.gain.linearRampToValueAtTime(p.gain, now + p.time + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + p.time + p.duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + p.time);
+        osc.stop(now + p.time + p.duration);
+      });
+      return;
+    }
+
+    if (profile === 'marimba') {
+      // Warm acoustic triad chord (E4, G#4, B4, E5)
+      const chord = [
+        { freq: 329.63, time: 0.0, duration: 0.6, gain: 0.26 },
+        { freq: 415.30, time: 0.04, duration: 0.6, gain: 0.24 },
+        { freq: 493.88, time: 0.08, duration: 0.65, gain: 0.26 },
+        { freq: 659.25, time: 0.12, duration: 0.8, gain: 0.22 },
+      ];
+      chord.forEach((n) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(n.freq, now + n.time);
+        gain.gain.setValueAtTime(0, now + n.time);
+        gain.gain.linearRampToValueAtTime(n.gain, now + n.time + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + n.time + n.duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + n.time);
+        osc.stop(now + n.time + n.duration);
+      });
+      return;
+    }
+
+    if (profile === 'subtle') {
+      // Soft gentle blip
+      const blips = [
+        { freq: 740, time: 0.0, duration: 0.12, gain: 0.16 },
+        { freq: 880, time: 0.08, duration: 0.18, gain: 0.18 },
+      ];
+      blips.forEach((b) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(b.freq, now + b.time);
+        gain.gain.setValueAtTime(0, now + b.time);
+        gain.gain.linearRampToValueAtTime(b.gain, now + b.time + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + b.time + b.duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + b.time);
+        osc.stop(now + b.time + b.duration);
+      });
+      return;
+    }
+
+    // Default: 'crystal' (C5 -> E5 -> G5 -> C6)
     const notes = [
       { freq: 523.25, time: 0.00, duration: 0.45, gain: 0.22, type: 'sine' },
       { freq: 659.25, time: 0.09, duration: 0.45, gain: 0.24, type: 'sine' },
       { freq: 783.99, time: 0.18, duration: 0.50, gain: 0.26, type: 'sine' },
-      { freq: 1046.50, time: 0.27, duration: 0.75, gain: 0.32, type: 'triangle' }, // Shimmer bell
+      { freq: 1046.50, time: 0.27, duration: 0.75, gain: 0.32, type: 'triangle' },
     ];
 
     notes.forEach((n) => {
@@ -54,6 +129,13 @@ export function playArrivalChime() {
   } catch (err) {
     console.warn('Audio playback not allowed or failed:', err);
   }
+}
+
+/**
+ * Preview sound tone on user click
+ */
+export function playSoundPreview(profile = 'crystal') {
+  playArrivalChime(profile);
 }
 
 /**
@@ -130,7 +212,7 @@ export function sendNotification(title, options = {}) {
   if (options.tag === 'departure') {
     playDepartureChime();
   } else {
-    playArrivalChime();
+    playArrivalChime(options.soundProfile || 'crystal');
   }
   triggerVibration();
 

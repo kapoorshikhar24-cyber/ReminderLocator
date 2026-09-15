@@ -76,6 +76,16 @@ export default function GoogleMapView({
           }
         });
 
+        // ResizeObserver for mobile tab switches
+        if (typeof window !== 'undefined' && 'ResizeObserver' in window && containerRef.current) {
+          const ro = new ResizeObserver(() => {
+            if (googleMapRef.current && window.google?.maps?.event) {
+              window.google.maps.event.trigger(googleMapRef.current, 'resize');
+            }
+          });
+          ro.observe(containerRef.current);
+        }
+
         setIsLoading(false);
       })
       .catch((err) => {

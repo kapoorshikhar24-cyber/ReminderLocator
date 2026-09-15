@@ -97,6 +97,7 @@ export default function SimulatorControl({
   if (!isSimulating) {
     return (
       <div
+        className="hide-mobile"
         style={{
           position: 'absolute',
           bottom: '20px',
@@ -119,7 +120,7 @@ export default function SimulatorControl({
           onClick={() => setIsSimulating(true)}
         >
           <Compass size={16} color="#f59e0b" />
-          <span>Open Desktop GPS Movement Simulator</span>
+          <span>Open GPS Movement Simulator</span>
         </button>
       </div>
     );
@@ -130,7 +131,7 @@ export default function SimulatorControl({
       <div className="sim-header">
         <div className="sim-title">
           <Compass size={18} />
-          <span>GPS Movement Simulator (Desktop Mode)</span>
+          <span>GPS Movement Simulator</span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -189,15 +190,17 @@ export default function SimulatorControl({
             <div
               style={{
                 display: 'flex',
+                flexWrap: 'wrap',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 background: 'var(--bg-card)',
                 borderRadius: 'var(--radius-md)',
                 padding: '8px 12px',
                 fontSize: '0.8rem',
+                gap: '8px',
               }}
             >
-              <div>
+              <div style={{ minWidth: '160px' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Targeting: </span>
                 <b>{nearest.title.slice(0, 24)}</b> ({formatDistance(minDistance)} away)
               </div>

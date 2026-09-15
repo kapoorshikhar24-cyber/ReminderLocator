@@ -11,6 +11,7 @@ import {
   Radio, 
   Compass,
   Layers,
+  Sliders,
   User,
   Zap
 } from 'lucide-react';
@@ -79,9 +80,9 @@ export default function Navbar({
           )}
         </button>
 
-        {/* Pocket / Travel Active Tracking Mode */}
+        {/* Pocket / Travel Active Tracking Mode (Desktop quick button, mobile uses Travel Mode in Settings) */}
         <button
-          className={`btn-icon ${travelMode ? 'active' : ''}`}
+          className={`btn-icon hide-mobile ${travelMode ? 'active' : ''}`}
           onClick={handleToggleTravelMode}
           title={travelMode ? 'Travel / Pocket Mode: ACTIVE (Keeps GPS tracking live in pocket)' : 'Turn on Travel Mode (Keeps GPS live without sleep)'}
           style={{ 
@@ -93,22 +94,22 @@ export default function Navbar({
           <Zap size={16} />
         </button>
 
-        {/* Notifications Permission Button */}
+        {/* Notifications Permission Button (Desktop only; on mobile native permission is requested automatically or in Settings) */}
         {notificationPermission !== 'granted' && (
           <button
-            className="btn btn-secondary"
+            className="btn btn-secondary hide-mobile"
             onClick={onRequestNotification}
             title="Enable browser push notifications"
             style={{ padding: '6px 12px', fontSize: '0.78rem' }}
           >
             <Bell size={14} />
-            <span className="hide-mobile">Alerts Off</span>
+            <span>Alerts Off</span>
           </button>
         )}
 
-        {/* Sound toggle */}
+        {/* Sound toggle (Desktop quick toggle, mobile uses Settings) */}
         <button
-          className={`btn-icon ${soundEnabled ? 'active' : ''}`}
+          className={`btn-icon hide-mobile ${soundEnabled ? 'active' : ''}`}
           onClick={() => setSoundEnabled(!soundEnabled)}
           title={soundEnabled ? 'Audio Chime Enabled' : 'Audio Chime Muted'}
         >
@@ -124,20 +125,20 @@ export default function Navbar({
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
 
-        {/* Map Provider & API Key Settings */}
+        {/* Preferences & Settings (Maps, Battery, Sounds) */}
         <button
           className="btn-icon"
           onClick={onOpenMapSettings}
-          title="Map Provider & API Key Settings"
+          title="Preferences & Settings (Maps, Battery GPS, Sounds)"
         >
-          <Layers size={18} />
+          <Sliders size={18} />
         </button>
 
         {/* User Account & Cloud Sync */}
         <button
           className="btn btn-secondary"
           style={{
-            padding: '5px 12px',
+            padding: '5px 10px',
             fontSize: '0.78rem',
             gap: '6px',
             background: user

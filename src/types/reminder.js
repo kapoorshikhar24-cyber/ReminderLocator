@@ -1,9 +1,10 @@
 export const CATEGORIES = [
-  { id: 'shopping', label: '🛍️ Goodies & Groceries', icon: 'ShoppingCart', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' },
-  { id: 'errand', label: '🏃 Quick Errands', icon: 'ShoppingBag', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' },
-  { id: 'personal', label: '💖 Self-Care & Joy', icon: 'Heart', color: '#ec4899', bg: 'rgba(236, 72, 153, 0.15)' },
-  { id: 'home', label: '🏡 Cozy Nest', icon: 'Home', color: '#a855f7', bg: 'rgba(168, 85, 247, 0.15)' },
-  { id: 'work', label: '💼 Work & Focus', icon: 'Briefcase', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.15)' },
+  { id: 'shopping', label: '🛍️ Goodies & Groceries', shortLabel: 'Groceries', emoji: '🛍️', icon: 'ShoppingCart', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' },
+  { id: 'errand', label: '🏃 Quick Errands', shortLabel: 'Errands', emoji: '🏃', icon: 'ShoppingBag', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' },
+  { id: 'work', label: '💼 Work & Office', shortLabel: 'Work', emoji: '💼', icon: 'Briefcase', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.15)' },
+  { id: 'home', label: '🏡 Cozy Nest', shortLabel: 'Home', emoji: '🏡', icon: 'Home', color: '#a855f7', bg: 'rgba(168, 85, 247, 0.15)' },
+  { id: 'personal', label: '💖 Self-Care & Joy', shortLabel: 'Personal', emoji: '💖', icon: 'Heart', color: '#ec4899', bg: 'rgba(236, 72, 153, 0.15)' },
+  { id: 'transit', label: '✈️ Commute & Travel', shortLabel: 'Transit', emoji: '✈️', icon: 'Navigation', color: '#6366f1', bg: 'rgba(99, 102, 241, 0.15)' },
 ];
 
 export const PRIORITIES = [

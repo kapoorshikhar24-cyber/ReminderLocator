@@ -59,7 +59,29 @@ export default function MapView({
       }
     });
 
+    // Auto-invalidate map size when container is resized or unhidden on mobile
+    let resizeObserver = null;
+    if (typeof window !== 'undefined' && 'ResizeObserver' in window && mapContainerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+        }
+      });
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
+    const handleWindowResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    };
+    window.addEventListener('resize', handleWindowResize);
+
     return () => {
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      window.removeEventListener('resize', handleWindowResize);
       map.remove();
       mapInstanceRef.current = null;
     };

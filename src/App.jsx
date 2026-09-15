@@ -42,7 +42,7 @@ import {
   getDevicePosition,
   watchDevicePosition
 } from './services/nativeLocation';
-import { List, Map as MapIcon, Compass, PlusCircle, Plus, Check } from 'lucide-react';
+import { List, Map as MapIcon, Compass, PlusCircle, Plus, Check, Sliders } from 'lucide-react';
 
 export default function App() {
   const { user } = useAuth();
@@ -586,7 +586,7 @@ export default function App() {
             onClick={() => setMobileTab('map')}
           >
             <MapIcon size={20} />
-            <span>Map & Radar</span>
+            <span>Map</span>
           </button>
 
           {/* Center Elevated Floating Add Button */}
@@ -606,7 +606,15 @@ export default function App() {
             }}
           >
             <Compass size={20} />
-            <span>Simulator</span>
+            <span>Sim</span>
+          </button>
+
+          <button
+            className={`mobile-nav-btn ${isMapSettingsOpen ? 'active' : ''}`}
+            onClick={() => setIsMapSettingsOpen(true)}
+          >
+            <Sliders size={20} />
+            <span>Settings</span>
           </button>
         </div>
       </nav>

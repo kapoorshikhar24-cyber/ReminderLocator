@@ -152,10 +152,13 @@ export function getStoredSettings() {
   const defaultSettings = {
     simulationMode: false, // Default to Live GPS so user's actual location is used on startup!
     soundEnabled: true,
+    soundProfile: 'crystal', // 'crystal', 'radar', 'marimba', 'subtle'
+    batteryMode: 'balanced', // 'high', 'balanced', 'saver'
     vibrationEnabled: true,
     notificationsEnabled: false,
     theme: 'dark',
     activeTab: 'all', // 'all', 'location', 'time', 'completed'
+    categoryFilter: 'all', // 'all', 'shopping', 'errand', 'work', etc.
   };
 
   if (typeof window === 'undefined') return defaultSettings;
