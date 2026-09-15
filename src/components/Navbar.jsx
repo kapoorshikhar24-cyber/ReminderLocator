@@ -10,7 +10,8 @@ import {
   Sun, 
   Radio, 
   Compass,
-  Layers
+  Layers,
+  User
 } from 'lucide-react';
 
 export default function Navbar({
@@ -25,6 +26,8 @@ export default function Navbar({
   setTheme,
   onOpenNewModal,
   onOpenMapSettings,
+  onOpenAuth,
+  user,
   nearestReminder,
 }) {
   return (
@@ -100,6 +103,43 @@ export default function Navbar({
           title="Map Provider & API Key Settings"
         >
           <Layers size={18} />
+        </button>
+
+        {/* User Account & Cloud Sync */}
+        <button
+          className="btn btn-secondary"
+          style={{
+            padding: '5px 12px',
+            fontSize: '0.78rem',
+            gap: '6px',
+            background: user
+              ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(236, 72, 153, 0.15))'
+              : undefined,
+            borderColor: user ? 'rgba(236, 72, 153, 0.4)' : undefined,
+            color: user ? '#f472b6' : undefined,
+          }}
+          onClick={onOpenAuth}
+          title={
+            user
+              ? `Logged in as ${user.email}. Google API Key & reminders are synchronized!`
+              : 'Log In or Sign Up to sync your Google API Key across all your devices'
+          }
+        >
+          <User size={14} />
+          <span className="hide-mobile">
+            {user ? (user.user_metadata?.display_name || user.email.split('@')[0]) : 'Sync Account'}
+          </span>
+          {user && (
+            <span
+              style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                background: '#34d399',
+                boxShadow: '0 0 6px #34d399',
+              }}
+            />
+          )}
         </button>
 
         {/* Add Reminder Button (Desktop only, mobile uses bottom tab bar) */}

@@ -8,6 +8,13 @@ import ReminderModal from './components/ReminderModal';
 import TriggerAlertModal from './components/TriggerAlertModal';
 import SimulatorControl from './components/SimulatorControl';
 import MapSettingsModal from './components/MapSettingsModal';
+import AuthModal from './components/AuthModal';
+import { useAuth } from './context/AuthContext';
+import { 
+  handleUserLoginSync, 
+  pushSettingsToCloud, 
+  pushRemindersToCloud 
+} from './services/cloudSync';
 import { 
   getStoredReminders, 
   saveReminders, 
@@ -30,6 +37,7 @@ import { reverseGeocode } from './services/geocoding';
 import { List, Map as MapIcon, Compass, PlusCircle, Plus, Check } from 'lucide-react';
 
 export default function App() {
+  const { user } = useAuth();
   const [reminders, setReminders] = useState(() => getStoredReminders());
   const [settings, setSettings] = useState(() => getStoredSettings());
   
@@ -58,18 +66,56 @@ export default function App() {
   const [pickedLocationCoords, setPickedLocationCoords] = useState(null);
   const [triggeredReminder, setTriggeredReminder] = useState(null);
   const [isMapSettingsOpen, setIsMapSettingsOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [mapConfig, setMapConfig] = useState(() => getMapConfig());
   const [toastMessage, setToastMessage] = useState(null);
+
+  // Sync with cloud on user login
+  useEffect(() => {
+    if (!user) return;
+
+    let isMounted = true;
+    handleUserLoginSync(user, reminders, mapConfig, userPos).then((synced) => {
+      if (!isMounted || !synced) return;
+
+      if (synced.mapConfig) {
+        setMapConfig(synced.mapConfig);
+      }
+      if (synced.reminders) {
+        setReminders(synced.reminders);
+      }
+      if (synced.defaultLoc) {
+        setUserPos(synced.defaultLoc);
+      }
+
+      setToastMessage('🌸 Logged in! Settings & Reminders synchronized across your devices ✨');
+      setTimeout(() => setToastMessage(null), 3500);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   const handleSaveMapConfig = (newConfig) => {
     setMapConfig(newConfig);
     saveMapConfig(newConfig);
+
+    // If user is logged in, automatically sync Google API key to Supabase!
+    if (user?.id) {
+      pushSettingsToCloud(user.id, newConfig, userPos);
+      setToastMessage('✨ Google Maps settings synced to your cloud account!');
+      setTimeout(() => setToastMessage(null), 3000);
+    }
   };
 
   const handleSetAsDefaultLocation = (coords) => {
     const target = coords || userPos;
     if (!target) return;
     saveDefaultLocation(target);
+    if (user?.id) {
+      pushSettingsToCloud(user.id, mapConfig, target);
+    }
     setToastMessage('📍 Saved as default startup location! ✨');
     setTimeout(() => setToastMessage(null), 3000);
   };
@@ -84,10 +130,13 @@ export default function App() {
     saveSettings({ ...settings, theme, soundEnabled, simulationMode: isSimulating });
   }, [theme, soundEnabled, isSimulating]);
 
-  // Persist reminders whenever they change
+  // Persist reminders whenever they change (Local Storage + Cloud)
   useEffect(() => {
     saveReminders(reminders);
-  }, [reminders]);
+    if (user?.id) {
+      pushRemindersToCloud(user.id, reminders);
+    }
+  }, [reminders, user]);
 
   // Startup: Automatically detect real GPS location and set as default location
   useEffect(() => {
@@ -392,6 +441,8 @@ export default function App() {
         setTheme={setTheme}
         onOpenNewModal={handleOpenNewModal}
         onOpenMapSettings={() => setIsMapSettingsOpen(true)}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        user={user}
       />
 
       {/* Overview Stats Bar */}
@@ -595,6 +646,15 @@ export default function App() {
         onClose={() => setIsMapSettingsOpen(false)}
         currentConfig={mapConfig}
         onSaveConfig={handleSaveMapConfig}
+      />
+
+      {/* User Auth & Cross-Device Sync Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        googleApiKey={mapConfig?.googleApiKey}
+        isSynced={Boolean(user)}
+        onForceSync={() => handleUserLoginSync(user, reminders, mapConfig, userPos)}
       />
 
       {/* Floating Status Toast */}
