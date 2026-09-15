@@ -38,7 +38,9 @@ import {
   sendArrivalAlert, 
   requestAllNativePermissions, 
   requestScreenWakeLock, 
-  releaseScreenWakeLock 
+  releaseScreenWakeLock,
+  getDevicePosition,
+  watchDevicePosition
 } from './services/nativeLocation';
 import { List, Map as MapIcon, Compass, PlusCircle, Plus, Check } from 'lucide-react';
 
@@ -146,11 +148,12 @@ export default function App() {
 
   // Startup: Automatically detect real GPS location and set as default location
   useEffect(() => {
-    if (!('geolocation' in navigator)) return;
+    let isMounted = true;
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords;
+    getDevicePosition()
+      .then((coords) => {
+        if (!isMounted || !coords) return;
+        const { lat, lng } = coords;
         const initialUserLocation = { lat, lng };
         setUserPos(initialUserLocation);
         saveDefaultLocation(initialUserLocation);
@@ -178,45 +181,37 @@ export default function App() {
           }
           return prev;
         });
-      },
-      (err) => {
+      })
+      .catch((err) => {
         console.warn('Initial geolocation detection error:', err.message);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000,
-      }
-    );
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Live GPS Watcher (when NOT in simulation mode)
   useEffect(() => {
     if (isSimulating) return;
 
-    if (!('geolocation' in navigator)) {
-      console.warn('Geolocation is not supported by this browser.');
-      return;
-    }
+    let cleanup = () => {};
 
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        const livePos = { lat, lng };
+    watchDevicePosition(
+      (livePos) => {
         setUserPos(livePos);
         saveDefaultLocation(livePos);
       },
       (err) => {
         console.warn('Geolocation watch error:', err.message);
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 5000,
-        timeout: 15000,
       }
-    );
+    ).then((stopWatching) => {
+      if (typeof stopWatching === 'function') {
+        cleanup = stopWatching;
+      }
+    });
 
-    return () => navigator.geolocation.clearWatch(watchId);
+    return () => cleanup();
   }, [isSimulating]);
 
   // Request notification and native background permissions

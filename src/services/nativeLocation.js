@@ -44,6 +44,84 @@ export async function requestAllNativePermissions() {
 }
 
 /**
+ * Get device GPS position (uses native Geolocation when available, browser fallback)
+ */
+export async function getDevicePosition() {
+  if (isNative()) {
+    try {
+      const pos = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 10000,
+      });
+      if (pos?.coords) {
+        return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      }
+    } catch (err) {
+      console.warn('Native Geolocation.getCurrentPosition failed, trying fallback:', err);
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+      return reject(new Error('Geolocation not supported'));
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (err) => reject(err),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  });
+}
+
+/**
+ * Watch device GPS position with live updates across native Android and Web
+ */
+export async function watchDevicePosition(onLocation, onError) {
+  if (isNative()) {
+    try {
+      const watchId = await Geolocation.watchPosition(
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 },
+        (position, err) => {
+          if (err) {
+            onError?.(err);
+            return;
+          }
+          if (position?.coords) {
+            onLocation({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            });
+          }
+        }
+      );
+      return () => {
+        Geolocation.clearWatch({ id: watchId });
+      };
+    } catch (err) {
+      console.warn('Native watchPosition failed, falling back to web:', err);
+    }
+  }
+
+  // Web fallback
+  if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+    const id = navigator.geolocation.watchPosition(
+      (pos) => {
+        onLocation({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+      },
+      onError,
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }
+
+  return () => {};
+}
+
+/**
  * Send alert notification that pops on lock screen and in pocket
  */
 export async function sendArrivalAlert({ title, body, reminderId }) {
