@@ -15,6 +15,7 @@ import {
   registerLocalAccount,
   loginLocalAccount,
   logoutLocalAccount,
+  createGuestSession,
   getStoredAccounts
 } from '../services/localAuth';
 
@@ -27,56 +28,88 @@ export function AuthProvider({ children }) {
   const [isConfigured, setIsConfigured] = useState(() => isSupabaseConfigured());
 
   useEffect(() => {
-    const supabase = getSupabase();
+    let isMounted = true;
 
-    if (supabase) {
-      // Check active Supabase cloud session
-      supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-        if (currentSession?.user) {
-          setSession(currentSession);
-          setUser({
-            ...currentSession.user,
-            userId: currentSession.user.user_metadata?.display_name || currentSession.user.email?.split('@')[0],
-            displayName: currentSession.user.user_metadata?.display_name || currentSession.user.email?.split('@')[0],
-            isLocal: false,
-          });
-          setLoading(false);
-          return;
+    // Hard safety timeout: Ensure loading state is NEVER stuck forever
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) {
+        setLoading(false);
+      }
+    }, 1500);
+
+    const initAuth = async () => {
+      try {
+        const supabase = getSupabase();
+
+        if (supabase) {
+          try {
+            const { data } = await supabase.auth.getSession();
+            const currentSession = data?.session;
+            if (currentSession?.user && isMounted) {
+              setSession(currentSession);
+              setUser({
+                ...currentSession.user,
+                userId: currentSession.user.user_metadata?.display_name || currentSession.user.email?.split('@')[0],
+                displayName: currentSession.user.user_metadata?.display_name || currentSession.user.email?.split('@')[0],
+                isLocal: false,
+              });
+              setLoading(false);
+              clearTimeout(safetyTimer);
+              return;
+            }
+          } catch (cloudErr) {
+            console.warn('Supabase getSession failed, checking local session:', cloudErr);
+          }
         }
 
-        // Fallback to local session if no cloud session
+        // Local stored user fallback
         const localActive = getStoredActiveUser();
-        if (localActive) {
+        if (localActive && isMounted) {
           setUser(localActive);
         }
-        setLoading(false);
-      });
-
-      // Listen for cloud auth state changes
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-        if (currentSession?.user) {
-          setSession(currentSession);
-          setUser({
-            ...currentSession.user,
-            userId: currentSession.user.user_metadata?.display_name || currentSession.user.email?.split('@')[0],
-            displayName: currentSession.user.user_metadata?.display_name || currentSession.user.email?.split('@')[0],
-            isLocal: false,
-          });
+      } catch (err) {
+        console.error('Auth initialization error:', err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+          clearTimeout(safetyTimer);
         }
-        setLoading(false);
-      });
-
-      return () => {
-        subscription.unsubscribe();
-      };
-    } else {
-      // No Supabase, check local stored user
-      const localActive = getStoredActiveUser();
-      if (localActive) {
-        setUser(localActive);
       }
-      setLoading(false);
+    };
+
+    initAuth();
+
+    // Listen for cloud auth state changes if configured
+    let subscription = null;
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+          if (!isMounted) return;
+          if (currentSession?.user) {
+            setSession(currentSession);
+            setUser({
+              ...currentSession.user,
+              userId: currentSession.user.user_metadata?.display_name || currentSession.user.email?.split('@')[0],
+              displayName: currentSession.user.user_metadata?.display_name || currentSession.user.email?.split('@')[0],
+              isLocal: false,
+            });
+          }
+          setLoading(false);
+        });
+        subscription = data?.subscription;
+      } catch (e) {
+        console.warn('Could not attach onAuthStateChange listener:', e);
+      }
     }
+
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, [isConfigured]);
 
   const signUp = async (identifier, password, displayName) => {
@@ -95,7 +128,7 @@ export function AuthProvider({ children }) {
           return data;
         }
       } catch (err) {
-        console.warn('Cloud signup error, trying local registration:', err);
+        console.warn('Cloud signup error, falling back to local registration:', err);
       }
     }
 
@@ -138,6 +171,12 @@ export function AuthProvider({ children }) {
     return { user: localUser };
   };
 
+  const continueAsGuest = () => {
+    const guestUser = createGuestSession();
+    setUser(guestUser);
+    return guestUser;
+  };
+
   const signOut = async () => {
     try {
       await signOutUser();
@@ -165,6 +204,7 @@ export function AuthProvider({ children }) {
     isConfigured,
     signUp,
     signIn,
+    continueAsGuest,
     signOut,
     resetPassword,
     updateSupabaseConfig,

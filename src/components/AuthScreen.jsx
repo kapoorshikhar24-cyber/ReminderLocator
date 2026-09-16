@@ -11,17 +11,17 @@ import {
   MapPin, 
   BellRing, 
   Radio, 
-  Layers, 
   ArrowRight,
-  Database,
   Cloud,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Zap,
+  LogIn
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function AuthScreen({ onLoginSuccess }) {
-  const { signIn, signUp, isConfigured, updateSupabaseConfig, config } = useAuth();
+  const { signIn, signUp, continueAsGuest, isConfigured, updateSupabaseConfig, config, getStoredAccounts } = useAuth();
   
   const [mode, setMode] = useState('signup'); // 'signup' or 'login'
   const [userId, setUserId] = useState('');
@@ -38,6 +38,22 @@ export default function AuthScreen({ onLoginSuccess }) {
   // Supabase cloud inputs
   const [cloudUrl, setCloudUrl] = useState(config.url || '');
   const [cloudKey, setCloudKey] = useState(config.anonKey || '');
+
+  const existingAccounts = getStoredAccounts();
+
+  const handleGuestEntry = () => {
+    setIsLoading(true);
+    setErrorMsg('');
+    try {
+      continueAsGuest();
+      if (onLoginSuccess) onLoginSuccess();
+    } catch (err) {
+      console.error('Guest login error:', err);
+      setErrorMsg('Could not launch guest mode. Please try creating an account.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -116,11 +132,42 @@ export default function AuthScreen({ onLoginSuccess }) {
           </div>
           <h1 className="auth-app-title">GeoRemind ✨</h1>
           <p className="auth-app-tagline">
-            Smart, location-aware alerts triggered right when you arrive or depart.
+            Smart, cute location-aware reminders triggered right in your pocket.
           </p>
         </div>
 
-        {/* Tab Switcher: Login vs Set ID / Sign Up */}
+        {/* Quick Guest Launch Button */}
+        <div style={{ marginBottom: '14px' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleGuestEntry}
+            disabled={isLoading}
+            style={{
+              width: '100%',
+              padding: '10px 16px',
+              fontSize: '0.84rem',
+              fontWeight: 800,
+              gap: '8px',
+              background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(244, 114, 182, 0.12))',
+              borderColor: 'rgba(56, 189, 248, 0.35)',
+              color: 'var(--text-primary)',
+              borderRadius: 'var(--radius-full)',
+              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            <Zap size={15} color="#fbbf24" />
+            <span>⚡ Instant Launch / Continue as Guest</span>
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', opacity: 0.6 }}>
+          <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border-subtle)' }} />
+          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>OR SIGN IN TO SYNC</span>
+          <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border-subtle)' }} />
+        </div>
+
+        {/* Tab Switcher: Set ID / Sign Up vs Login */}
         <div className="auth-tabs">
           <button
             type="button"
@@ -131,7 +178,7 @@ export default function AuthScreen({ onLoginSuccess }) {
               setSuccessMsg('');
             }}
           >
-            <Sparkles size={16} />
+            <Sparkles size={15} />
             <span>Set ID & Password</span>
           </button>
           <button
@@ -143,16 +190,73 @@ export default function AuthScreen({ onLoginSuccess }) {
               setSuccessMsg('');
             }}
           >
-            <User size={16} />
+            <LogIn size={15} />
             <span>Log In</span>
           </button>
         </div>
+
+        {/* Existing Accounts Quick Selector if available */}
+        {mode === 'login' && existingAccounts.length > 0 && (
+          <div style={{ marginBottom: '12px' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+              Saved profiles on this device:
+            </span>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {existingAccounts.map((acc) => (
+                <button
+                  key={acc.id}
+                  type="button"
+                  onClick={() => {
+                    setUserId(acc.userId);
+                    setErrorMsg('');
+                  }}
+                  style={{
+                    padding: '3px 10px',
+                    borderRadius: 'var(--radius-full)',
+                    background: userId.toLowerCase() === acc.userId.toLowerCase() ? 'var(--color-brand-glow)' : 'var(--bg-surface-elevated)',
+                    border: userId.toLowerCase() === acc.userId.toLowerCase() ? '1.5px solid var(--color-brand)' : '1px solid var(--border-subtle)',
+                    color: userId.toLowerCase() === acc.userId.toLowerCase() ? 'var(--color-brand)' : 'var(--text-secondary)',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  👤 {acc.displayName || acc.userId}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Status Messages */}
         {errorMsg && (
           <div className="auth-alert error">
             <span className="auth-alert-icon">⚠️</span>
-            <span>{errorMsg}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+              <span>{errorMsg}</span>
+              {mode === 'login' && errorMsg.includes('No account found') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('signup');
+                    setErrorMsg('');
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--color-brand)',
+                    fontSize: '0.74rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    padding: 0,
+                    textAlign: 'left',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  ✨ Click here to register with ID "{userId}"
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -203,7 +307,6 @@ export default function AuthScreen({ onLoginSuccess }) {
                 onChange={(e) => setUserId(e.target.value)}
                 required
                 autoComplete="username"
-                autoFocus
               />
             </div>
             {mode === 'signup' && (

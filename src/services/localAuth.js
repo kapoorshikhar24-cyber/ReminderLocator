@@ -171,6 +171,22 @@ export function loginLocalAccount({ userId, password }) {
 }
 
 /**
+ * Create or resume Guest session with 1-click
+ */
+export function createGuestSession() {
+  const guestUser = {
+    id: 'guest_user',
+    userId: 'guest',
+    email: 'guest@georemind.local',
+    displayName: 'Guest Traveler',
+    isLocal: true,
+    isGuest: true,
+  };
+  persistActiveUser(guestUser);
+  return guestUser;
+}
+
+/**
  * Log out active user
  */
 export function logoutLocalAccount() {
