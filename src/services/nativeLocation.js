@@ -1,7 +1,10 @@
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { sendNotification as sendWebNotification, playArrivalChime, triggerVibration } from './notifications';
+
+// Register native custom BackgroundLocation plugin
+export const BackgroundLocation = registerPlugin('BackgroundLocation');
 
 /**
  * Check if running inside Capacitor native iOS/Android shell
@@ -11,7 +14,7 @@ export function isNative() {
 }
 
 /**
- * Request all required native permissions (GPS + Notifications)
+ * Request all required native permissions (Fine GPS, Background GPS, Notifications)
  */
 export async function requestAllNativePermissions() {
   const result = {
@@ -21,15 +24,20 @@ export async function requestAllNativePermissions() {
 
   if (isNative()) {
     try {
-      // 1. Notifications
+      // 1. Notifications permission
       const notifStatus = await LocalNotifications.requestPermissions();
       result.notifications = notifStatus.display;
 
-      // 2. Geolocation (Fine + Background)
+      // 2. Geolocation permissions (Fine + Coarse)
       const geoStatus = await Geolocation.requestPermissions({
         permissions: ['location', 'coarseLocation'],
       });
       result.location = geoStatus.location;
+
+      // 3. Request Background location plugin permissions
+      if (BackgroundLocation?.requestPermissions) {
+        await BackgroundLocation.requestPermissions();
+      }
     } catch (err) {
       console.warn('Native permission request error:', err);
     }
@@ -41,6 +49,142 @@ export async function requestAllNativePermissions() {
   }
 
   return result;
+}
+
+/**
+ * Start 24/7 background location tracking & geofencing engine
+ */
+export async function startBackgroundTracking(reminders = []) {
+  if (isNative()) {
+    try {
+      await requestAllNativePermissions();
+      const activeReminders = reminders.filter((r) => !r.completed && r.location?.lat);
+      const res = await BackgroundLocation.startTracking({
+        remindersJson: JSON.stringify(activeReminders),
+      });
+      console.log('🚀 Native Background Tracking started:', res);
+      return res;
+    } catch (err) {
+      console.warn('Could not start native background service:', err);
+    }
+  }
+
+  // Web fallback: request Screen Wake Lock to prevent sleep
+  await requestScreenWakeLock();
+  return { status: 'web_active' };
+}
+
+/**
+ * Stop background location tracking service
+ */
+export async function stopBackgroundTracking() {
+  if (isNative()) {
+    try {
+      const res = await BackgroundLocation.stopTracking();
+      return res;
+    } catch (err) {
+      console.warn('Could not stop native background service:', err);
+    }
+  }
+  await releaseScreenWakeLock();
+  return { status: 'stopped' };
+}
+
+/**
+ * Sync active reminders to the native background service
+ * Ensures Android geofence engine checks the latest geofences even if app is asleep
+ */
+export async function syncRemindersToBackground(reminders = []) {
+  if (isNative()) {
+    try {
+      const activeReminders = reminders.filter((r) => !r.completed && r.location?.lat);
+      await BackgroundLocation.updateReminders({
+        remindersJson: JSON.stringify(activeReminders),
+      });
+    } catch (err) {
+      console.warn('Error syncing reminders to background service:', err);
+    }
+  }
+}
+
+/**
+ * Prompt user to whitelist GeoRemind from Android Battery Optimization / Doze mode
+ */
+export async function requestBatteryOptimizationExemption() {
+  if (isNative()) {
+    try {
+      const res = await BackgroundLocation.requestIgnoreBatteryOptimizations();
+      return res;
+    } catch (err) {
+      console.warn('Error requesting battery exemption:', err);
+    }
+  }
+  return { prompted: false };
+}
+
+/**
+ * Check background permissions and battery optimization status
+ */
+export async function checkBackgroundStatus() {
+  if (isNative()) {
+    try {
+      return await BackgroundLocation.checkBackgroundStatus();
+    } catch (err) {
+      console.warn('Error checking background status:', err);
+    }
+  }
+  return {
+    hasLocationPermission: true,
+    hasBackgroundPermission: true,
+    isIgnoringBatteryOptimizations: true,
+  };
+}
+
+/**
+ * Listen to live location updates emitted by native background service
+ */
+export function addBackgroundLocationListener(onLocation) {
+  if (isNative() && BackgroundLocation?.addListener) {
+    try {
+      const handle = BackgroundLocation.addListener('locationUpdate', (data) => {
+        if (data?.latitude && data?.longitude) {
+          onLocation({
+            lat: data.latitude,
+            lng: data.longitude,
+            accuracy: data.accuracy,
+            speed: data.speed,
+          });
+        }
+      });
+      return () => {
+        handle.then((h) => h.remove?.());
+      };
+    } catch (err) {
+      console.warn('Error adding background location listener:', err);
+    }
+  }
+  return () => {};
+}
+
+/**
+ * Listen to geofence triggers detected by native background service
+ */
+export function addBackgroundGeofenceListener(onTrigger) {
+  if (isNative() && BackgroundLocation?.addListener) {
+    try {
+      const handle = BackgroundLocation.addListener('geofenceTrigger', (data) => {
+        if (data) {
+          onTrigger(data);
+        }
+      });
+      return () => {
+        handle.then((h) => h.remove?.());
+      };
+    } catch (err) {
+      console.warn('Error adding background geofence listener:', err);
+    }
+  }
+  return () => {};
 }
 
 /**

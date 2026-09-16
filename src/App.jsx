@@ -41,9 +41,17 @@ import {
   requestScreenWakeLock, 
   releaseScreenWakeLock,
   getDevicePosition,
-  watchDevicePosition
+  watchDevicePosition,
+  startBackgroundTracking,
+  stopBackgroundTracking,
+  syncRemindersToBackground,
+  requestBatteryOptimizationExemption,
+  checkBackgroundStatus,
+  addBackgroundLocationListener,
+  addBackgroundGeofenceListener,
+  isNative
 } from './services/nativeLocation';
-import { List, Map as MapIcon, Compass, PlusCircle, Plus, Check, Sliders, Navigation } from 'lucide-react';
+import { List, Map as MapIcon, Compass, PlusCircle, Plus, Check, Sliders, Navigation, ShieldCheck, BatteryCharging } from 'lucide-react';
 
 export default function App() {
   const { user, loading, signOut } = useAuth();
@@ -215,11 +223,47 @@ export default function App() {
     return () => cleanup();
   }, [isSimulating]);
 
+  // Background Tracking & Native Geofence Synchronization
+  useEffect(() => {
+    // Start background tracking with current active reminders
+    startBackgroundTracking(reminders).catch(console.warn);
+
+    // Sync reminders to native background service whenever reminders change
+    syncRemindersToBackground(reminders);
+  }, [reminders]);
+
+  // Attach native background location & geofence event listeners
+  useEffect(() => {
+    const unsubLocation = addBackgroundLocationListener((livePos) => {
+      if (!isSimulating && livePos) {
+        setUserPos(livePos);
+        saveDefaultLocation(livePos);
+      }
+    });
+
+    const unsubGeofence = addBackgroundGeofenceListener((triggerData) => {
+      if (triggerData?.reminderId) {
+        const found = reminders.find((r) => String(r.id) === String(triggerData.reminderId));
+        if (found) {
+          setTriggeredReminder(found);
+        }
+      }
+    });
+
+    return () => {
+      unsubLocation();
+      unsubGeofence();
+    };
+  }, [isSimulating, reminders]);
+
   // Request notification and native background permissions
   const handleRequestNotification = async () => {
     await requestAllNativePermissions();
     const perm = await requestNotificationPermission();
     setNotificationPermission(perm);
+    if (isNative()) {
+      await requestBatteryOptimizationExemption();
+    }
   };
 
   // Main Geofencing Engine: runs whenever userPos updates

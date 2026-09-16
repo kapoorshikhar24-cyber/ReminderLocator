@@ -16,7 +16,7 @@ import {
   Zap,
   LogOut
 } from 'lucide-react';
-import { requestScreenWakeLock, releaseScreenWakeLock, isWakeLockActive } from '../services/nativeLocation';
+import { requestScreenWakeLock, releaseScreenWakeLock, isWakeLockActive, requestBatteryOptimizationExemption, isNative } from '../services/nativeLocation';
 
 export default function Navbar({
   userPos,
@@ -39,6 +39,9 @@ export default function Navbar({
 
   const handleToggleTravelMode = async () => {
     if (!travelMode) {
+      if (isNative()) {
+        await requestBatteryOptimizationExemption();
+      }
       await requestScreenWakeLock();
       setTravelMode(true);
     } else {
