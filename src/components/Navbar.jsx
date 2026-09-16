@@ -104,13 +104,20 @@ export default function Navbar({
         {/* Notifications Permission Button */}
         {notificationPermission !== 'granted' && (
           <button
-            className="btn btn-secondary hide-mobile"
+            className="btn btn-secondary"
             onClick={onRequestNotification}
-            title="Enable browser push notifications"
-            style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+            title="Enable automatic arrival notifications & background alerts"
+            style={{
+              padding: '6px 12px',
+              fontSize: '0.78rem',
+              borderColor: 'rgba(56, 189, 248, 0.4)',
+              background: 'rgba(56, 189, 248, 0.1)',
+              color: '#38bdf8',
+              fontWeight: 700,
+            }}
           >
-            <Bell size={14} />
-            <span>Alerts Off</span>
+            <BellRing size={14} />
+            <span>Enable Auto Alerts</span>
           </button>
         )}
 

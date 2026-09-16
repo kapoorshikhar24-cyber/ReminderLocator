@@ -160,9 +160,11 @@ export function getStoredSettings() {
     simulationMode: false, // Default to Live GPS so user's actual location is used on startup!
     soundEnabled: true,
     soundProfile: 'crystal', // 'crystal', 'radar', 'marimba', 'subtle'
-    batteryMode: 'balanced', // 'high', 'balanced', 'saver'
+    batteryMode: 'high', // 'high' (fast 3s updates), 'balanced', 'saver'
     vibrationEnabled: true,
-    notificationsEnabled: false,
+    notificationsEnabled: true, // Default ON for automatic arrival alerts
+    backgroundTracking: true, // Default ON for background geofence monitoring
+    autoAlerts: true, // Default ON for auto arrival triggers
     theme: 'dark',
     activeTab: 'all', // 'all', 'location', 'time', 'completed'
     categoryFilter: 'all', // 'all', 'shopping', 'errand', 'work', etc.

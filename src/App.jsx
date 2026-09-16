@@ -266,6 +266,14 @@ export default function App() {
     }
   };
 
+  // Auto-request notifications and background permissions on startup by default
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleRequestNotification().catch(console.warn);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Main Geofencing Engine: runs whenever userPos updates
   useEffect(() => {
     if (!userPos) return;
