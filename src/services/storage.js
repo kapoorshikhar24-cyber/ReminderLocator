@@ -126,12 +126,17 @@ export const INITIAL_REMINDERS = [
   },
 ];
 
-export function getStoredReminders() {
+export function getStoredReminders(userId) {
   if (typeof window === 'undefined') return INITIAL_REMINDERS;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const key = userId ? `${STORAGE_KEY}_${userId}` : STORAGE_KEY;
+    const raw = localStorage.getItem(key);
     if (raw) {
       return JSON.parse(raw);
+    }
+    const defaultRaw = localStorage.getItem(STORAGE_KEY);
+    if (defaultRaw) {
+      return JSON.parse(defaultRaw);
     }
   } catch (err) {
     console.error('Error reading localStorage:', err);
@@ -139,9 +144,11 @@ export function getStoredReminders() {
   return INITIAL_REMINDERS;
 }
 
-export function saveReminders(reminders) {
+export function saveReminders(reminders, userId) {
   if (typeof window === 'undefined') return;
   try {
+    const key = userId ? `${STORAGE_KEY}_${userId}` : STORAGE_KEY;
+    localStorage.setItem(key, JSON.stringify(reminders));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
   } catch (err) {
     console.error('Error saving to localStorage:', err);

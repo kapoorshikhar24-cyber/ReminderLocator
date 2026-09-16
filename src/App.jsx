@@ -9,6 +9,7 @@ import TriggerAlertModal from './components/TriggerAlertModal';
 import SimulatorControl from './components/SimulatorControl';
 import MapSettingsModal from './components/MapSettingsModal';
 import AuthModal from './components/AuthModal';
+import AuthScreen from './components/AuthScreen';
 import { useAuth } from './context/AuthContext';
 import { 
   handleUserLoginSync, 
@@ -42,11 +43,11 @@ import {
   getDevicePosition,
   watchDevicePosition
 } from './services/nativeLocation';
-import { List, Map as MapIcon, Compass, PlusCircle, Plus, Check, Sliders } from 'lucide-react';
+import { List, Map as MapIcon, Compass, PlusCircle, Plus, Check, Sliders, Navigation } from 'lucide-react';
 
 export default function App() {
-  const { user } = useAuth();
-  const [reminders, setReminders] = useState(() => getStoredReminders());
+  const { user, loading, signOut } = useAuth();
+  const [reminders, setReminders] = useState(() => getStoredReminders(user?.userId || user?.id));
   const [settings, setSettings] = useState(() => getStoredSettings());
   
   // User position: start at saved default location or GPS
@@ -420,6 +421,48 @@ export default function App() {
     }
   };
 
+  // Persist reminders to localStorage and cloud whenever updated
+  useEffect(() => {
+    if (user) {
+      saveReminders(reminders, user.userId || user.id);
+      if (user.id && !user.isLocal) {
+        pushRemindersToCloud(user.id, reminders);
+      }
+    }
+  }, [reminders, user]);
+
+  // Load user's reminders when user account changes
+  useEffect(() => {
+    if (user) {
+      const stored = getStoredReminders(user.userId || user.id);
+      setReminders(stored);
+    }
+  }, [user?.userId, user?.id]);
+
+  if (loading) {
+    return (
+      <div className="auth-loading-screen">
+        <div className="auth-brand-badge pulse-anim">
+          <Navigation size={32} />
+        </div>
+        <p style={{ color: 'var(--text-secondary)', marginTop: '16px', fontWeight: 600 }}>
+          Loading GeoRemind...
+        </p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <AuthScreen
+        onLoginSuccess={() => {
+          setToastMessage('✨ Welcome to GeoRemind!');
+          setTimeout(() => setToastMessage(null), 3000);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="app-container">
       {/* Top Navigation */}
@@ -436,6 +479,7 @@ export default function App() {
         onOpenNewModal={handleOpenNewModal}
         onOpenMapSettings={() => setIsMapSettingsOpen(true)}
         onOpenAuth={() => setIsAuthModalOpen(true)}
+        onLogout={signOut}
         user={user}
       />
 

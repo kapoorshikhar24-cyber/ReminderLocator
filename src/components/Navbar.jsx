@@ -13,7 +13,8 @@ import {
   Layers,
   Sliders,
   User,
-  Zap
+  Zap,
+  LogOut
 } from 'lucide-react';
 import { requestScreenWakeLock, releaseScreenWakeLock, isWakeLockActive } from '../services/nativeLocation';
 
@@ -30,6 +31,7 @@ export default function Navbar({
   onOpenNewModal,
   onOpenMapSettings,
   onOpenAuth,
+  onLogout,
   user,
   nearestReminder,
 }) {
@@ -44,6 +46,8 @@ export default function Navbar({
       setTravelMode(false);
     }
   };
+
+  const displayName = user?.displayName || user?.userId || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Account';
 
   return (
     <header className="navbar">
@@ -80,7 +84,7 @@ export default function Navbar({
           )}
         </button>
 
-        {/* Pocket / Travel Active Tracking Mode (Desktop quick button, mobile uses Travel Mode in Settings) */}
+        {/* Pocket / Travel Active Tracking Mode */}
         <button
           className={`btn-icon hide-mobile ${travelMode ? 'active' : ''}`}
           onClick={handleToggleTravelMode}
@@ -94,7 +98,7 @@ export default function Navbar({
           <Zap size={16} />
         </button>
 
-        {/* Notifications Permission Button (Desktop only) */}
+        {/* Notifications Permission Button */}
         {notificationPermission !== 'granted' && (
           <button
             className="btn btn-secondary hide-mobile"
@@ -107,7 +111,7 @@ export default function Navbar({
           </button>
         )}
 
-        {/* Sound toggle (Desktop quick toggle) */}
+        {/* Sound toggle */}
         <button
           className={`btn-icon hide-mobile ${soundEnabled ? 'active' : ''}`}
           onClick={() => setSoundEnabled(!soundEnabled)}
@@ -125,7 +129,7 @@ export default function Navbar({
           {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
         </button>
 
-        {/* Preferences & Settings (Desktop only, mobile has it in bottom nav) */}
+        {/* Preferences & Settings */}
         <button
           className="btn-icon hide-mobile"
           onClick={onOpenMapSettings}
@@ -134,45 +138,53 @@ export default function Navbar({
           <Sliders size={18} />
         </button>
 
-        {/* User Account & Cloud Sync */}
-        <button
-          className="btn btn-secondary"
-          style={{
-            padding: '5px 10px',
-            fontSize: '0.76rem',
-            gap: '5px',
-            background: user
-              ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(236, 72, 153, 0.15))'
-              : undefined,
-            borderColor: user ? 'rgba(236, 72, 153, 0.4)' : undefined,
-            color: user ? '#f472b6' : undefined,
-          }}
-          onClick={onOpenAuth}
-          title={
-            user
-              ? `Logged in as ${user.email}. Google API Key & reminders are synchronized!`
-              : 'Log In or Sign Up to sync your Google API Key across all your devices'
-          }
-        >
-          <User size={14} />
-          <span className="hide-mobile">
-            {user ? (user.user_metadata?.display_name || user.email.split('@')[0]) : 'Sync'}
-          </span>
-          {user && (
-            <span
+        {/* User Profile Badge */}
+        {user && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              className="btn btn-secondary"
               style={{
-                width: '7px',
-                height: '7px',
-                borderRadius: '50%',
-                background: '#34d399',
-                boxShadow: '0 0 6px #34d399',
-                flexShrink: 0,
+                padding: '5px 11px',
+                fontSize: '0.76rem',
+                gap: '6px',
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(236, 72, 153, 0.15))',
+                borderColor: 'rgba(236, 72, 153, 0.4)',
+                color: '#f472b6',
+                fontWeight: 700,
               }}
-            />
-          )}
-        </button>
+              onClick={onOpenAuth}
+              title={`Logged in as ${displayName}. Click to manage settings & sync`}
+            >
+              <User size={14} />
+              <span className="hide-mobile">@{displayName}</span>
+              <span
+                style={{
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  background: '#34d399',
+                  boxShadow: '0 0 6px #34d399',
+                  flexShrink: 0,
+                }}
+              />
+            </button>
 
-        {/* Add Reminder Button (Desktop only, mobile uses bottom tab bar) */}
+            {/* Direct Log Out Button */}
+            <button
+              className="btn-icon"
+              onClick={onLogout}
+              title="Log Out of GeoRemind"
+              style={{
+                color: 'var(--text-muted)',
+                borderColor: 'var(--border-subtle)',
+              }}
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        )}
+
+        {/* Add Reminder Button */}
         <button 
           className="btn btn-primary hide-mobile"
           onClick={onOpenNewModal}
