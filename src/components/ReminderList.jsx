@@ -33,9 +33,7 @@ export default function ReminderList({
   onCenterMap,
 }) {
   const [sortBy, setSortBy] = useState('default'); // 'default', 'nearest', 'priority', 'newest'
-  const [selectedCategory, setSelectedCategory] = useState('all');
-
-  // Filter logic
+  // Filter logic: search and sorting
   const filtered = useMemo(() => {
     let result = reminders.filter((rem) => {
       // Search query
@@ -46,17 +44,6 @@ export default function ReminderList({
         const matchLoc = (rem.location?.name || '').toLowerCase().includes(q);
         if (!matchTitle && !matchNotes && !matchLoc) return false;
       }
-
-      // Category filter
-      if (selectedCategory !== 'all' && rem.category !== selectedCategory) {
-        return false;
-      }
-
-      // Tabs
-      if (activeTab === 'location') return !!rem.location?.lat && !rem.completed;
-      if (activeTab === 'time') return !rem.location?.lat && !rem.completed;
-      if (activeTab === 'active') return !rem.completed;
-      if (activeTab === 'completed') return rem.completed;
       return true;
     });
 
@@ -79,22 +66,18 @@ export default function ReminderList({
     }
 
     return result;
-  }, [reminders, searchQuery, selectedCategory, activeTab, sortBy, userPos]);
+  }, [reminders, searchQuery, sortBy, userPos]);
 
   const counts = {
     all: reminders.length,
-    location: reminders.filter((r) => r.location?.lat && !r.completed).length,
-    time: reminders.filter((r) => !r.location?.lat && !r.completed).length,
     active: reminders.filter((r) => !r.completed).length,
     completed: reminders.filter((r) => r.completed).length,
   };
 
-  const hasActiveFilters = searchQuery.trim() !== '' || selectedCategory !== 'all' || activeTab !== 'all';
+  const hasActiveFilters = searchQuery.trim() !== '' || sortBy !== 'default';
 
   const resetAllFilters = () => {
     setSearchQuery('');
-    setSelectedCategory('all');
-    setActiveTab('all');
     setSortBy('default');
   };
 
@@ -142,72 +125,7 @@ export default function ReminderList({
           )}
         </div>
 
-        {/* Tab Switcher */}
-        <nav className="tabs-bar" aria-label="Reminder filters">
-          <button
-            type="button"
-            className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
-            onClick={() => setActiveTab('all')}
-          >
-            <span>🌈 All</span>
-            <span className="tab-count">{counts.all}</span>
-          </button>
-          <button
-            type="button"
-            className={`tab-btn ${activeTab === 'location' ? 'active' : ''}`}
-            onClick={() => setActiveTab('location')}
-          >
-            <span>📍 Geofenced</span>
-            <span className="tab-count">{counts.location}</span>
-          </button>
-          <button
-            type="button"
-            className={`tab-btn ${activeTab === 'time' ? 'active' : ''}`}
-            onClick={() => setActiveTab('time')}
-          >
-            <span>⏰ Standard</span>
-            <span className="tab-count">{counts.time}</span>
-          </button>
-          <button
-            type="button"
-            className={`tab-btn ${activeTab === 'completed' ? 'active' : ''}`}
-            onClick={() => setActiveTab('completed')}
-          >
-            <span>💖 Done</span>
-            <span className="tab-count">{counts.completed}</span>
-          </button>
-        </nav>
 
-        {/* Category Filter Chips Bar */}
-        <div className="category-chips-bar">
-          <button
-            type="button"
-            className={`chip-btn ${selectedCategory === 'all' ? 'active' : ''}`}
-            onClick={() => setSelectedCategory('all')}
-          >
-            All Tags
-          </button>
-          {CATEGORIES.map((c) => {
-            const isCatActive = selectedCategory === c.id;
-            const countInCat = reminders.filter((r) => r.category === c.id).length;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                className={`chip-btn ${isCatActive ? 'active' : ''}`}
-                onClick={() => setSelectedCategory(isCatActive ? 'all' : c.id)}
-                style={{
-                  '--chip-color': c.color,
-                  '--chip-bg': c.bg,
-                }}
-              >
-                <span>{c.emoji}</span>
-                <span>{c.shortLabel || c.label}</span>
-                {countInCat > 0 && <span className="chip-count">({countInCat})</span>}
-              </button>
-            );
-          })}
-        </div>
 
         {/* Sort & Quick Helper Actions */}
         <div className="sort-helpers-row">
