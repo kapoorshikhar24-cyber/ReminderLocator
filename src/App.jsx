@@ -562,6 +562,7 @@ export default function App() {
             onSimulateArrival={handleSimulateArrival}
             onOpenNewModal={handleOpenNewModal}
             onSeedLocalSamples={handleSeedLocalSamples}
+            onCenterMap={handleCenterMap}
           />
         </div>
 
