@@ -115,6 +115,7 @@ export default function AuthModal({
         onClick={(e) => e.stopPropagation()} 
         style={{ maxWidth: '480px' }}
       >
+        <div className="modal-drag-handle" />
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div

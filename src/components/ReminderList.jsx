@@ -75,11 +75,32 @@ export default function ReminderList({
           <input
             type="text"
             className="search-input"
-            placeholder="Search reminders or locations..."
+            placeholder="Search reminders or places..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             id="input-search-reminders"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4px',
+              }}
+              title="Clear search"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         {/* Tab filters */}
@@ -120,6 +141,7 @@ export default function ReminderList({
             overflowX: 'auto',
             padding: '2px 0 4px 0',
             scrollbarWidth: 'none',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           <button
@@ -137,6 +159,7 @@ export default function ReminderList({
               color: selectedCategory === 'all' ? 'var(--color-brand)' : 'var(--text-secondary)',
               whiteSpace: 'nowrap',
               transition: 'all 0.15s ease',
+              flexShrink: 0,
             }}
           >
             All Tags
@@ -164,6 +187,7 @@ export default function ReminderList({
                   alignItems: 'center',
                   gap: '4px',
                   transition: 'all 0.15s ease',
+                  flexShrink: 0,
                 }}
               >
                 <span>{c.emoji}</span>
@@ -177,20 +201,22 @@ export default function ReminderList({
         </div>
 
         {/* Sorting & seed helpers */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
           <button
             className={`btn btn-secondary ${sortByNearest ? 'active' : ''}`}
             style={{ 
               padding: '5px 12px', 
-              fontSize: '0.75rem', 
+              fontSize: '0.74rem', 
               gap: '6px',
               background: sortByNearest ? 'rgba(56, 189, 248, 0.15)' : undefined,
               borderColor: sortByNearest ? 'var(--color-brand)' : undefined,
+              flex: '1 1 auto',
+              minWidth: '130px',
             }}
             onClick={() => setSortByNearest(!sortByNearest)}
           >
             <SlidersHorizontal size={13} />
-            <span>{sortByNearest ? '🐾 Closest First' : '📍 Sort by Distance'}</span>
+            <span>{sortByNearest ? '🐾 Closest First' : '📍 Sort Distance'}</span>
           </button>
 
           {onSeedLocalSamples && (
@@ -198,17 +224,19 @@ export default function ReminderList({
               className="btn btn-secondary"
               style={{ 
                 padding: '5px 12px', 
-                fontSize: '0.75rem', 
+                fontSize: '0.74rem', 
                 gap: '6px',
                 background: 'rgba(244, 114, 182, 0.12)',
                 borderColor: 'rgba(244, 114, 182, 0.35)',
-                color: 'var(--color-pink)'
+                color: 'var(--color-pink)',
+                flex: '1 1 auto',
+                minWidth: '130px',
               }}
               onClick={onSeedLocalSamples}
               title="Sprinkle cute sample reminders centered right around your current GPS coordinates"
             >
               <Sparkles size={13} />
-              <span>✨ Add Nearby Demos</span>
+              <span>✨ Nearby Demos</span>
             </button>
           )}
         </div>

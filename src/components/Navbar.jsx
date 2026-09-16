@@ -94,7 +94,7 @@ export default function Navbar({
           <Zap size={16} />
         </button>
 
-        {/* Notifications Permission Button (Desktop only; on mobile native permission is requested automatically or in Settings) */}
+        {/* Notifications Permission Button (Desktop only) */}
         {notificationPermission !== 'granted' && (
           <button
             className="btn btn-secondary hide-mobile"
@@ -107,7 +107,7 @@ export default function Navbar({
           </button>
         )}
 
-        {/* Sound toggle (Desktop quick toggle, mobile uses Settings) */}
+        {/* Sound toggle (Desktop quick toggle) */}
         <button
           className={`btn-icon hide-mobile ${soundEnabled ? 'active' : ''}`}
           onClick={() => setSoundEnabled(!soundEnabled)}
@@ -122,12 +122,12 @@ export default function Navbar({
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           title="Toggle Light / Dark Mode"
         >
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
         </button>
 
-        {/* Preferences & Settings (Maps, Battery, Sounds) */}
+        {/* Preferences & Settings (Desktop only, mobile has it in bottom nav) */}
         <button
-          className="btn-icon"
+          className="btn-icon hide-mobile"
           onClick={onOpenMapSettings}
           title="Preferences & Settings (Maps, Battery GPS, Sounds)"
         >
@@ -139,8 +139,8 @@ export default function Navbar({
           className="btn btn-secondary"
           style={{
             padding: '5px 10px',
-            fontSize: '0.78rem',
-            gap: '6px',
+            fontSize: '0.76rem',
+            gap: '5px',
             background: user
               ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(236, 72, 153, 0.15))'
               : undefined,
@@ -156,7 +156,7 @@ export default function Navbar({
         >
           <User size={14} />
           <span className="hide-mobile">
-            {user ? (user.user_metadata?.display_name || user.email.split('@')[0]) : 'Sync Account'}
+            {user ? (user.user_metadata?.display_name || user.email.split('@')[0]) : 'Sync'}
           </span>
           {user && (
             <span
@@ -166,6 +166,7 @@ export default function Navbar({
                 borderRadius: '50%',
                 background: '#34d399',
                 boxShadow: '0 0 6px #34d399',
+                flexShrink: 0,
               }}
             />
           )}

@@ -16,6 +16,7 @@ export default function TriggerAlertModal({
   return (
     <div className="modal-overlay">
       <div className="modal-dialog trigger-arrival-dialog">
+        <div className="modal-drag-handle" style={{ background: 'rgba(255, 255, 255, 0.4)' }} />
         {/* Confetti decoration emojis */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', fontSize: '20px', marginBottom: '-6px' }}>
           <span>🎉</span>

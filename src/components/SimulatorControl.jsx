@@ -200,37 +200,37 @@ export default function SimulatorControl({
                 gap: '8px',
               }}
             >
-              <div style={{ minWidth: '160px' }}>
+              <div style={{ flex: '1 1 160px', minWidth: '140px' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Targeting: </span>
-                <b>{nearest.title.slice(0, 24)}</b> ({formatDistance(minDistance)} away)
+                <b>{nearest.title.slice(0, 20)}</b> ({formatDistance(minDistance)} away)
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                 <button
                   className="btn btn-secondary"
-                  style={{ padding: '6px 12px', fontSize: '0.75rem', gap: '6px' }}
+                  style={{ padding: '6px 10px', fontSize: '0.74rem', gap: '5px' }}
                   onClick={handleStepCloser}
                   disabled={isAutoWalking}
                   title="Move 50 meters towards the nearest reminder"
                 >
                   <Footprints size={14} />
-                  <span>Step +50m</span>
+                  <span>+50m Step</span>
                 </button>
 
                 <button
                   className={`btn ${isAutoWalking ? 'btn-secondary' : 'btn-primary'}`}
-                  style={{ padding: '6px 12px', fontSize: '0.75rem', gap: '6px' }}
+                  style={{ padding: '6px 12px', fontSize: '0.74rem', gap: '5px' }}
                   onClick={() => setIsAutoWalking(!isAutoWalking)}
                   title={isAutoWalking ? 'Stop walking' : 'Auto walk step-by-step towards target'}
                 >
                   {isAutoWalking ? (
                     <>
-                      <Square size={14} />
-                      <span>Stop Walk</span>
+                      <Square size={13} />
+                      <span>Stop</span>
                     </>
                   ) : (
                     <>
-                      <Play size={14} />
+                      <Play size={13} />
                       <span>Auto Walk</span>
                     </>
                   )}
@@ -247,12 +247,14 @@ export default function SimulatorControl({
               alignItems: 'center',
               fontSize: '0.7rem',
               color: 'var(--text-muted)',
+              flexWrap: 'wrap',
+              gap: '4px',
             }}
           >
             <span>
-              Current Sim GPS: {userPos?.lat.toFixed(5)}, {userPos?.lng.toFixed(5)}
+              GPS: {userPos?.lat.toFixed(4)}, {userPos?.lng.toFixed(4)}
             </span>
-            <span>Speed: {speed}m/sec (~{(speed * 3.6).toFixed(0)} km/h)</span>
+            <span>Speed: {speed}m/sec</span>
           </div>
         </>
       )}

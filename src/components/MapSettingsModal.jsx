@@ -81,6 +81,7 @@ export default function MapSettingsModal({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '560px' }}>
+        <div className="modal-drag-handle" />
         <div className="modal-header" style={{ paddingBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Sliders size={20} color="var(--color-brand)" />

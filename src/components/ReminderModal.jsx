@@ -181,6 +181,7 @@ export default function ReminderModal({
       onClick={onClose}
     >
       <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-drag-handle" />
         <div className="modal-header">
           <h2 className="modal-title">
             {editReminder ? '✏️ Edit Reminder' : '✨ New Reminder'}
@@ -606,15 +607,15 @@ export default function ReminderModal({
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-            <button type="button" className="btn btn-secondary" onClick={onClose} style={{ padding: '9px 18px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-secondary" onClick={onClose} style={{ padding: '9px 18px', flex: '1 1 auto' }}>
               Cancel
             </button>
             <button 
               type="submit" 
               className="btn btn-primary" 
               id="btn-save-reminder"
-              style={{ padding: '9px 22px' }}
+              style={{ padding: '9px 22px', flex: '2 1 auto' }}
             >
               <Check size={16} strokeWidth={3} />
               <span>{editReminder ? 'Save Changes ✨' : 'Create Reminder ✨'}</span>

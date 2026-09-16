@@ -470,7 +470,7 @@ export default function App() {
             <div
               style={{
                 position: 'absolute',
-                top: '16px',
+                top: '12px',
                 left: '50%',
                 transform: 'translateX(-50%)',
                 zIndex: 1500,
@@ -478,22 +478,23 @@ export default function App() {
                 border: '2px solid var(--color-brand)',
                 borderRadius: 'var(--radius-lg)',
                 boxShadow: 'var(--shadow-lg)',
-                padding: '12px 18px',
+                padding: '10px 14px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '14px',
-                width: '92%',
-                maxWidth: '620px',
+                gap: '10px',
+                width: 'calc(100% - 24px)',
+                maxWidth: '580px',
                 backdropFilter: 'blur(16px)',
                 animation: 'popIn 0.2s ease-out',
+                flexWrap: 'wrap',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                <span className="pulse-dot" style={{ background: '#ef4444' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: '1 1 auto' }}>
+                <span className="pulse-dot" style={{ background: '#ef4444', flexShrink: 0 }} />
                 <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#f8fafc' }}>
-                    Tap anywhere on map or drag red pin
+                  <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#f8fafc' }}>
+                    Tap map or drag pin
                   </span>
                   <span
                     style={{
@@ -502,6 +503,7 @@ export default function App() {
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
+                      maxWidth: '240px',
                     }}
                   >
                     📍 {pickedLocationCoords?.name || 'Resolving location...'}
@@ -509,17 +511,17 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: 'auto' }}>
                 <button
                   className="btn btn-secondary"
-                  style={{ padding: '6px 10px', fontSize: '0.75rem' }}
+                  style={{ padding: '6px 10px', fontSize: '0.74rem' }}
                   onClick={handleCancelMapPicker}
                 >
                   Cancel
                 </button>
                 <button
                   className="btn btn-primary"
-                  style={{ padding: '6px 14px', fontSize: '0.75rem' }}
+                  style={{ padding: '6px 12px', fontSize: '0.74rem' }}
                   onClick={handleConfirmMapPickedLocation}
                   id="btn-confirm-picked-location"
                 >

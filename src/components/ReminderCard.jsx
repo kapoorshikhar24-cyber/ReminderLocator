@@ -72,22 +72,22 @@ export default function ReminderCard({
         </div>
 
         {/* Tags & Priority Chips */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0, flexWrap: 'wrap' }}>
           {/* Category Tag Badge */}
           <span
             className="category-pill"
             style={{
-              fontSize: '0.72rem',
+              fontSize: '0.7rem',
               fontWeight: 800,
               color: category.color,
               background: category.bg,
               border: `1px solid ${category.color}40`,
-              padding: '3px 8px',
+              padding: '2px 7px',
               borderRadius: 'var(--radius-full)',
-              letterSpacing: '0.02em',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '4px',
+              gap: '3px',
+              whiteSpace: 'nowrap',
             }}
           >
             <span>{category.emoji}</span>
@@ -98,14 +98,14 @@ export default function ReminderCard({
           <span
             className="priority-pill"
             style={{
-              fontSize: '0.72rem',
+              fontSize: '0.7rem',
               fontWeight: 800,
               color: priority.color,
               background: `${priority.color}18`,
               border: `1px solid ${priority.color}40`,
-              padding: '3px 8px',
+              padding: '2px 7px',
               borderRadius: 'var(--radius-full)',
-              letterSpacing: '0.02em',
+              whiteSpace: 'nowrap',
             }}
           >
             {priority.label}
@@ -141,10 +141,9 @@ export default function ReminderCard({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
-            fontSize: '0.75rem',
+            fontSize: '0.74rem',
             color: 'var(--text-secondary)',
-            marginLeft: '36px',
-            marginBottom: '8px',
+            marginBottom: '4px',
           }}
         >
           <Clock size={12} color="var(--color-purple)" />
