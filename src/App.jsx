@@ -393,6 +393,16 @@ export default function App() {
     setUserPos({ lat: rem.location.lat, lng: rem.location.lng });
   };
 
+  // Center map on a specific reminder
+  const handleCenterMap = (rem) => {
+    if (rem?.location?.lat && rem?.location?.lng) {
+      setUserPos({ lat: rem.location.lat, lng: rem.location.lng });
+      setMobileTab('map');
+      setToastMessage(`📍 Centered on ${rem.location.name || rem.title}`);
+      setTimeout(() => setToastMessage(null), 2500);
+    }
+  };
+
   // Teleport to coordinates
   const handleTeleport = (lat, lng, name) => {
     setIsSimulating(true);
