@@ -275,6 +275,25 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Trigger Execution: Modal + Sound + System Push Notification (Pocket / Lock Screen)
+  const executeTrigger = (reminder, eventType, distance) => {
+    const notifTitle =
+      eventType === 'exit'
+        ? `Leaving: ${reminder.title}`
+        : `Arrived at ${reminder.location?.name || 'Target'}!`;
+    const notifBody = reminder.notes || `You are within ${reminder.location?.radius || 100}m of your reminder location.`;
+
+    // Native & Web notification with sound & vibration
+    sendArrivalAlert({
+      title: notifTitle,
+      body: notifBody,
+      reminderId: reminder.id,
+    });
+
+    // Show In-App Alert Modal if on screen
+    setTriggeredReminder(reminder);
+  };
+
   // Main Geofencing Engine: runs whenever userPos updates
   useEffect(() => {
     if (!userPos) return;
@@ -287,7 +306,7 @@ export default function App() {
         return;
       }
 
-      const { lat, lng, radius = 100, triggerType = 'enter', name } = rem.location;
+      const { lat, lng, radius = 100, triggerType = 'enter' } = rem.location;
       const distance = calculateDistance(userPos.lat, userPos.lng, lat, lng);
       const isInsideNow = distance <= radius;
 
@@ -325,25 +344,6 @@ export default function App() {
       });
     });
   }, [userPos, reminders]);
-
-  // Trigger Execution: Modal + Sound + System Push Notification (Pocket / Lock Screen)
-  const executeTrigger = (reminder, eventType, distance) => {
-    const notifTitle =
-      eventType === 'exit'
-        ? `Leaving: ${reminder.title}`
-        : `Arrived at ${reminder.location.name || 'Target'}!`;
-    const notifBody = reminder.notes || `You are within ${reminder.location.radius}m of your reminder location.`;
-
-    // Native & Web notification with sound & vibration
-    sendArrivalAlert({
-      title: notifTitle,
-      body: notifBody,
-      reminderId: reminder.id,
-    });
-
-    // Show In-App Alert Modal if on screen
-    setTriggeredReminder(reminder);
-  };
 
   // Toggle completion
   const handleToggleComplete = (id) => {
