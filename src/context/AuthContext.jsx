@@ -22,20 +22,13 @@ import {
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => getStoredActiveUser() || createGuestSession());
   const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isConfigured, setIsConfigured] = useState(() => isSupabaseConfigured());
 
   useEffect(() => {
     let isMounted = true;
-
-    // Hard safety timeout: Ensure loading state is NEVER stuck forever
-    const safetyTimer = setTimeout(() => {
-      if (isMounted) {
-        setLoading(false);
-      }
-    }, 1500);
 
     const initAuth = async () => {
       try {
@@ -53,12 +46,10 @@ export function AuthProvider({ children }) {
                 displayName: currentSession.user.user_metadata?.display_name || currentSession.user.email?.split('@')[0],
                 isLocal: false,
               });
-              setLoading(false);
-              clearTimeout(safetyTimer);
               return;
             }
           } catch (cloudErr) {
-            console.warn('Supabase getSession failed, checking local session:', cloudErr);
+            console.warn('Supabase getSession failed, using local session:', cloudErr);
           }
         }
 
@@ -66,14 +57,13 @@ export function AuthProvider({ children }) {
         const localActive = getStoredActiveUser();
         if (localActive && isMounted) {
           setUser(localActive);
+        } else if (isMounted) {
+          // Always ensure an active user session exists so app opens immediately
+          const guestUser = createGuestSession();
+          setUser(guestUser);
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-          clearTimeout(safetyTimer);
-        }
       }
     };
 
@@ -95,7 +85,6 @@ export function AuthProvider({ children }) {
               isLocal: false,
             });
           }
-          setLoading(false);
         });
         subscription = data?.subscription;
       } catch (e) {
@@ -105,7 +94,6 @@ export function AuthProvider({ children }) {
 
     return () => {
       isMounted = false;
-      clearTimeout(safetyTimer);
       if (subscription) {
         subscription.unsubscribe();
       }
@@ -133,13 +121,26 @@ export function AuthProvider({ children }) {
     }
 
     // Register local account
-    const localUser = registerLocalAccount({
-      userId: identifier,
-      password,
-      displayName,
-    });
-    setUser(localUser);
-    return { user: localUser };
+    try {
+      const localUser = registerLocalAccount({
+        userId: identifier,
+        password,
+        displayName,
+      });
+      setUser(localUser);
+      return { user: localUser };
+    } catch (regErr) {
+      // If already registered, seamlessly log in
+      if (regErr.message.includes('already registered')) {
+        const localUser = loginLocalAccount({
+          userId: identifier,
+          password,
+        });
+        setUser(localUser);
+        return { user: localUser };
+      }
+      throw regErr;
+    }
   };
 
   const signIn = async (identifier, password) => {
@@ -162,13 +163,27 @@ export function AuthProvider({ children }) {
       }
     }
 
-    // Local login
-    const localUser = loginLocalAccount({
-      userId: identifier,
-      password,
-    });
-    setUser(localUser);
-    return { user: localUser };
+    // Local login with auto-create fallback
+    try {
+      const localUser = loginLocalAccount({
+        userId: identifier,
+        password,
+      });
+      setUser(localUser);
+      return { user: localUser };
+    } catch (loginErr) {
+      // If account does not exist yet, automatically create it on the spot!
+      if (loginErr.message.includes('No account found')) {
+        const newUser = registerLocalAccount({
+          userId: identifier,
+          password: password || '1234',
+          displayName: identifier,
+        });
+        setUser(newUser);
+        return { user: newUser };
+      }
+      throw loginErr;
+    }
   };
 
   const continueAsGuest = () => {
@@ -184,7 +199,8 @@ export function AuthProvider({ children }) {
       console.warn('Signout cloud error:', e);
     }
     logoutLocalAccount();
-    setUser(null);
+    const guestUser = createGuestSession();
+    setUser(guestUser);
     setSession(null);
   };
 
