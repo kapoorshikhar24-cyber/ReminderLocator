@@ -144,12 +144,54 @@ export function getStoredReminders(userId) {
   return INITIAL_REMINDERS;
 }
 
+export function sanitizeReminder(r) {
+  if (!r || typeof r !== 'object') return null;
+  const title = String(r.title || '').trim().slice(0, 250);
+  if (!title) return null;
+
+  const notes = r.notes ? String(r.notes).trim().slice(0, 5000) : '';
+  const category = ['shopping', 'errand', 'work', 'home', 'personal', 'health'].includes(r.category)
+    ? r.category
+    : 'shopping';
+  const priority = ['low', 'medium', 'high', 'critical'].includes(r.priority) ? r.priority : 'medium';
+  const type = ['location', 'time', 'both'].includes(r.type) ? r.type : 'location';
+
+  let location = null;
+  if (r.location && typeof r.location === 'object') {
+    const lat = Number(r.location.lat);
+    const lng = Number(r.location.lng);
+    const radius = Number(r.location.radius);
+    if (!isNaN(lat) && lat >= -90 && lat <= 90 && !isNaN(lng) && lng >= -180 && lng <= 180) {
+      location = {
+        name: String(r.location.name || 'Pinned Spot').trim().slice(0, 150),
+        lat,
+        lng,
+        radius: !isNaN(radius) && radius > 0 && radius <= 50000 ? radius : 100,
+        triggerType: r.location.triggerType === 'exit' ? 'exit' : 'enter',
+      };
+    }
+  }
+
+  return {
+    ...r,
+    title,
+    notes,
+    category,
+    priority,
+    type,
+    location,
+    completed: Boolean(r.completed),
+    status: r.completed ? 'completed' : 'active',
+  };
+}
+
 export function saveReminders(reminders, userId) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !Array.isArray(reminders)) return;
   try {
+    const sanitized = reminders.map(sanitizeReminder).filter(Boolean);
     const key = userId ? `${STORAGE_KEY}_${userId}` : STORAGE_KEY;
-    localStorage.setItem(key, JSON.stringify(reminders));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
+    localStorage.setItem(key, JSON.stringify(sanitized));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
   } catch (err) {
     console.error('Error saving to localStorage:', err);
   }
