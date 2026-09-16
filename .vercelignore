@@ -1,0 +1,22 @@
+# Native Android platform
+android
+android/**
+
+# Dependencies & Build artifacts
+node_modules
+dist
+dist-ssr
+
+# Environment files
+.env
+.env*.local
+
+# Tooling & IDEs
+.sf
+.vscode
+.idea
+.git
+*.log
+
+# Backend scripts
+supabase_schema.sql
