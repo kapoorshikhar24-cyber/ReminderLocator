@@ -358,6 +358,45 @@ export async function sendArrivalAlert({ title, body, reminderId, soundProfile =
 }
 
 /**
+ * Schedule a native snooze notification that will fire even if the app is closed
+ */
+export async function scheduleSnoozeNotification({ reminder, minutes = 10 }) {
+  if (!reminder) return;
+  const triggerTime = new Date(Date.now() + minutes * 60 * 1000);
+
+  if (isNative()) {
+    try {
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            title: `💤 Snooze Over: ${reminder.title}`,
+            body: reminder.notes || `Reminder for ${reminder.location?.name || 'your saved spot'}`,
+            id: Math.abs(hashString(`snooze-${reminder.id}`)),
+            schedule: { at: triggerTime },
+            sound: 'beep.wav',
+            channelId: 'georemind_alerts',
+            extra: { reminderId: reminder.id, type: 'snooze' },
+          },
+        ],
+      });
+      return;
+    } catch (err) {
+      console.warn('Could not schedule native snooze notification:', err);
+    }
+  }
+
+  // On Web / Desktop fallback (if tab is still alive)
+  if (typeof window !== 'undefined' && 'Notification' in window) {
+    setTimeout(() => {
+      sendWebNotification(`💤 Snooze Over: ${reminder.title}`, {
+        body: reminder.notes || `Reminder for ${reminder.location?.name || 'your saved spot'}`,
+        tag: `snooze-${reminder.id}`,
+      });
+    }, minutes * 60 * 1000);
+  }
+}
+
+/**
  * Simple numeric hash for notification IDs
  */
 function hashString(str) {

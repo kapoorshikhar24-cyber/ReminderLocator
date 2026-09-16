@@ -37,6 +37,7 @@ import {
 import { reverseGeocode } from './services/geocoding';
 import { 
   sendArrivalAlert, 
+  scheduleSnoozeNotification,
   requestAllNativePermissions, 
   requestScreenWakeLock, 
   releaseScreenWakeLock,
@@ -462,14 +463,20 @@ export default function App() {
   };
 
   const handleSnoozeTriggered = (id) => {
+    const reminder = reminders.find((r) => r.id === id);
     setTriggeredReminder(null);
-    // Reset cooldown to snooze for 10 minutes
+    // Reset cooldown to snooze for 10 minutes in memory
     const record = geofenceStateMap.current.get(id);
     if (record) {
       geofenceStateMap.current.set(id, {
         ...record,
         lastTriggeredTime: Date.now() + 10 * 60 * 1000,
       });
+    }
+
+    // Schedule OS-level notification so user is notified even if app is closed/in background
+    if (reminder) {
+      scheduleSnoozeNotification({ reminder, minutes: 10 });
     }
   };
 
