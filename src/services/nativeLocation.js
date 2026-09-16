@@ -372,7 +372,10 @@ export async function scheduleSnoozeNotification({ reminder, minutes = 10 }) {
             title: `💤 Snooze Over: ${reminder.title}`,
             body: reminder.notes || `Reminder for ${reminder.location?.name || 'your saved spot'}`,
             id: Math.abs(hashString(`snooze-${reminder.id}`)),
-            schedule: { at: triggerTime },
+            schedule: { 
+              at: triggerTime,
+              allowWhileIdle: true, // Forces Android OS AlarmManager to fire even in Doze mode / App killed
+            },
             sound: 'beep.wav',
             channelId: 'georemind_alerts',
             extra: { reminderId: reminder.id, type: 'snooze' },
