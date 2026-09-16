@@ -24,9 +24,25 @@ export async function requestAllNativePermissions() {
 
   if (isNative()) {
     try {
-      // 1. Notifications permission
+      // 1. Notifications permission & Channel setup
       const notifStatus = await LocalNotifications.requestPermissions();
       result.notifications = notifStatus.display;
+
+      try {
+        await LocalNotifications.createChannel({
+          id: 'georemind_alerts',
+          name: 'GeoRemind Geofence Alerts',
+          description: 'Heads-up arrival & departure alerts for location reminders',
+          importance: 5, // MAX importance (heads-up banner + sound + vibration)
+          visibility: 1, // VISIBILITY_PUBLIC (shows on lock screen)
+          vibration: true,
+          sound: 'beep.wav',
+          lights: true,
+          lightColor: '#38bdf8',
+        });
+      } catch (err) {
+        console.warn('Notification channel setup error:', err);
+      }
 
       // 2. Geolocation permissions (Fine + Coarse)
       const geoStatus = await Geolocation.requestPermissions({
@@ -322,6 +338,7 @@ export async function sendArrivalAlert({ title, body, reminderId, soundProfile =
             id: Math.abs(hashString(reminderId || title || '1')),
             schedule: { at: new Date(Date.now() + 100) },
             sound: 'beep.wav',
+            channelId: 'georemind_alerts',
             actionTypeId: '',
             extra: { reminderId },
           },
