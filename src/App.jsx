@@ -306,7 +306,13 @@ export default function App() {
         return;
       }
 
+      // Check if reminder is snoozed
+      if (rem.snoozedUntil && now < rem.snoozedUntil) {
+        return;
+      }
+
       const { lat, lng, radius = 100, triggerType = 'enter' } = rem.location;
+
       const distance = calculateDistance(userPos.lat, userPos.lng, lat, lng);
       const isInsideNow = distance <= radius;
 
@@ -472,23 +478,69 @@ export default function App() {
     setTriggeredReminder(null);
   };
 
-  const handleSnoozeTriggered = (id) => {
-    const reminder = reminders.find((r) => r.id === id);
+  const handleSnoozeReminder = (id, minutes = 10) => {
+    const numMinutes = Number(minutes) || 10;
+    const snoozedUntil = Date.now() + numMinutes * 60 * 1000;
+    
+    // Find target reminder
+    const targetReminder = reminders.find((r) => r.id === id);
+    const updatedReminders = reminders.map((r) =>
+      r.id === id ? { ...r, snoozedUntil } : r
+    );
+    setReminders(updatedReminders);
     setTriggeredReminder(null);
-    // Reset cooldown to snooze for 10 minutes in memory
+
+    // Reset cooldown to snooze time in memory map
     const record = geofenceStateMap.current.get(id);
     if (record) {
       geofenceStateMap.current.set(id, {
         ...record,
-        lastTriggeredTime: Date.now() + 10 * 60 * 1000,
+        lastTriggeredTime: snoozedUntil,
       });
     }
 
-    // Schedule OS-level notification so user is notified even if app is closed/in background
-    if (reminder) {
-      scheduleSnoozeNotification({ reminder, minutes: 10 });
+    // Schedule OS-level notification so user is alerted even if app is closed/backgrounded
+    if (targetReminder) {
+      scheduleSnoozeNotification({ reminder: targetReminder, minutes: numMinutes });
     }
+
+    // Update Android native background tracking service
+    updateNativeReminders(updatedReminders);
+
+    // Friendly Toast Feedback
+    const title = targetReminder?.title || 'Reminder';
+    const durationLabel = numMinutes >= 60
+      ? `${Math.floor(numMinutes / 60)} hr${numMinutes >= 120 ? 's' : ''}`
+      : `${numMinutes} mins`;
+    setToastMessage(`💤 "${title}" snoozed for ${durationLabel}!`);
+    setTimeout(() => setToastMessage(null), 3200);
   };
+
+  const handleUnsnoozeReminder = (id) => {
+    const targetReminder = reminders.find((r) => r.id === id);
+    const updatedReminders = reminders.map((r) =>
+      r.id === id ? { ...r, snoozedUntil: null } : r
+    );
+    setReminders(updatedReminders);
+
+    // Reset memory cooldown map
+    const record = geofenceStateMap.current.get(id);
+    if (record) {
+      geofenceStateMap.current.set(id, {
+        ...record,
+        lastTriggeredTime: 0,
+      });
+    }
+
+    // Update Android native background service
+    updateNativeReminders(updatedReminders);
+
+    // Friendly Toast
+    const title = targetReminder?.title || 'Reminder';
+    setToastMessage(`🔔 "${title}" unsnoozed & tracking active!`);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
 
   // Persist reminders to localStorage and cloud whenever updated
   useEffect(() => {
@@ -573,7 +625,10 @@ export default function App() {
             onOpenNewModal={handleOpenNewModal}
             onSeedLocalSamples={handleSeedLocalSamples}
             onCenterMap={handleCenterMap}
+            onSnooze={handleSnoozeReminder}
+            onUnsnooze={handleUnsnoozeReminder}
           />
+
         </div>
 
         {/* Right Pane: Interactive Map & Simulator */}
@@ -754,9 +809,10 @@ export default function App() {
       <TriggerAlertModal
         triggeredReminder={triggeredReminder}
         onComplete={handleCompleteTriggered}
-        onSnooze={handleSnoozeTriggered}
+        onSnooze={handleSnoozeReminder}
         onDismiss={() => setTriggeredReminder(null)}
       />
+
 
       {/* Map Provider & API Key Settings Modal */}
       <MapSettingsModal

@@ -12,7 +12,7 @@ import {
   Loader2,
   AlertCircle
 } from 'lucide-react';
-import { CATEGORIES, PRIORITIES, RADIUS_PRESETS } from '../types/reminder';
+import { CATEGORIES, PRIORITIES, RADIUS_PRESETS, SNOOZE_PRESETS } from '../types/reminder';
 import { searchPlaces } from '../services/geocoding';
 
 export default function ReminderModal({
@@ -29,6 +29,8 @@ export default function ReminderModal({
   const [notes, setNotes] = useState('');
   const [category, setCategory] = useState('shopping');
   const [priority, setPriority] = useState('medium');
+  const [defaultSnoozeMinutes, setDefaultSnoozeMinutes] = useState(10);
+
   
   // Location settings
   const [enableLocation, setEnableLocation] = useState(true);
@@ -55,6 +57,7 @@ export default function ReminderModal({
       setNotes(editReminder.notes || '');
       setCategory(editReminder.category || 'shopping');
       setPriority(editReminder.priority || 'medium');
+      setDefaultSnoozeMinutes(editReminder.defaultSnoozeMinutes || 10);
       
       if (editReminder.location) {
         setEnableLocation(true);
@@ -80,6 +83,7 @@ export default function ReminderModal({
       setLat(userPos.lat);
       setLng(userPos.lng);
       setLocationName('Current Location');
+      setDefaultSnoozeMinutes(10);
     }
   }, [editReminder, isOpen]);
 
@@ -149,6 +153,7 @@ export default function ReminderModal({
       notes: notes.trim(),
       category,
       priority,
+      defaultSnoozeMinutes: Number(defaultSnoozeMinutes) || 10,
       completed: editReminder ? editReminder.completed : false,
       type: enableLocation && enableTime ? 'both' : enableLocation ? 'location' : 'time',
       location: enableLocation && lat && lng ? {
@@ -605,6 +610,58 @@ export default function ReminderModal({
               />
             )}
           </div>
+
+          {/* Snooze Time Settings */}
+          <div
+            style={{
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-md)',
+              padding: '14px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Clock size={18} color="var(--color-brand)" />
+                <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Default Snooze Time</span>
+              </div>
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-brand)', fontWeight: 700 }}>
+                {defaultSnoozeMinutes >= 60 ? `${defaultSnoozeMinutes / 60} hr` : `${defaultSnoozeMinutes} min`}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {SNOOZE_PRESETS.map((preset) => {
+                const isSelected = defaultSnoozeMinutes === preset.value;
+                return (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => setDefaultSnoozeMinutes(preset.value)}
+                    style={{
+                      flex: '1 1 calc(33.333% - 6px)',
+                      minWidth: '60px',
+                      padding: '6px 10px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.78rem',
+                      fontWeight: isSelected ? 800 : 600,
+                      cursor: 'pointer',
+                      border: isSelected ? '1.5px solid var(--color-brand)' : '1px solid var(--border-subtle)',
+                      background: isSelected ? 'var(--color-brand-glow)' : 'var(--bg-card)',
+                      color: isSelected ? 'var(--color-brand)' : 'var(--text-secondary)',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
 
           {/* Action Buttons */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>

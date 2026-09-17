@@ -258,7 +258,14 @@ public class BackgroundLocationService extends Service implements LocationListen
                 JSONObject rem = array.getJSONObject(i);
                 if (rem.optBoolean("completed", false)) continue;
 
+                // Check if reminder is snoozed
+                long snoozedUntil = rem.optLong("snoozedUntil", 0L);
+                if (snoozedUntil > now) {
+                    continue; // Skip evaluating while snoozed
+                }
+
                 JSONObject locObj = rem.optJSONObject("location");
+
                 if (locObj == null) continue;
 
                 double targetLat = locObj.optDouble("lat", Double.NaN);

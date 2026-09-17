@@ -1,5 +1,5 @@
 import React from 'react';
-import { Target, CheckCircle2, Navigation, Radio, Sparkles } from 'lucide-react';
+import { Target, CheckCircle2, Navigation, Radio, MapPin, Sparkles } from 'lucide-react';
 import { calculateDistance, formatDistance } from '../services/geolocation';
 
 export default function StatsBar({ reminders, userPos }) {
@@ -27,57 +27,48 @@ export default function StatsBar({ reminders, userPos }) {
     });
   }
 
+  const isNearestInside = nearest && minDistance <= (nearest.location?.radius || 100);
+
   return (
     <div className="stats-bar">
-      <div className="stats-pill" title="Total active uncompleted tasks">
-        <Target size={13} color="var(--color-brand)" />
-        <span className="stats-label">Active:</span>
-        <b className="stats-value">{activeReminders.length}</b>
+      <div className="stats-pill stats-pill-active" title="Total active uncompleted tasks">
+        <div className="stats-pill-icon active-icon">
+          <Target size={12} strokeWidth={2.5} />
+        </div>
+        <span className="stats-label">Active</span>
+        <span className="stats-badge-number">{activeReminders.length}</span>
       </div>
 
-      <div className="stats-pill" title="Active geofenced locations monitored in background">
-        <Navigation size={13} color="#38bdf8" />
-        <span className="stats-label">Geofenced:</span>
-        <b className="stats-value">{locationReminders.length}</b>
+      <div className="stats-pill stats-pill-geofenced" title="Active geofenced locations monitored in background">
+        <div className="stats-pill-icon geofence-icon">
+          <Navigation size={12} strokeWidth={2.5} />
+        </div>
+        <span className="stats-label">Geofences</span>
+        <span className="stats-badge-number">{locationReminders.length}</span>
       </div>
 
       {total > 0 && (
-        <div className="stats-pill" title="Tasks marked completed">
-          <CheckCircle2 size={13} color="#34d399" />
-          <span className="stats-label">Done:</span>
-          <b className="stats-value" style={{ color: '#34d399' }}>
-            {completedCount}/{total} ({completionPct}%)
-          </b>
+        <div className="stats-pill stats-pill-done" title="Tasks marked completed">
+          <div className="stats-pill-icon done-icon">
+            <CheckCircle2 size={12} strokeWidth={2.5} />
+          </div>
+          <span className="stats-label">Done</span>
+          <span className="stats-badge-number">{completedCount}/{total} <small style={{ opacity: 0.8, fontWeight: 600 }}>({completionPct}%)</small></span>
         </div>
       )}
 
       {nearest && (
         <div
-          className={`stats-pill ${minDistance <= (nearest.location?.radius || 100) ? 'inside-pill' : ''}`}
+          className={`stats-pill stats-pill-nearest ${isNearestInside ? 'inside-pill' : ''}`}
           title={`Closest active spot: ${nearest.location?.name || nearest.title}`}
-          style={{
-            borderColor: minDistance <= (nearest.location?.radius || 100) ? 'rgba(52, 211, 153, 0.5)' : undefined,
-            background: minDistance <= (nearest.location?.radius || 100) ? 'rgba(16, 185, 129, 0.12)' : undefined,
-          }}
         >
-          <Radio
-            size={13}
-            color={minDistance <= (nearest.location?.radius || 100) ? '#34d399' : '#f59e0b'}
-            className={minDistance <= (nearest.location?.radius || 100) ? 'pulse-anim' : ''}
-          />
-          <span className="stats-label">Nearest:</span>
-          <b
-            className="stats-value"
-            style={{
-              color: minDistance <= (nearest.location?.radius || 100) ? '#34d399' : 'var(--text-primary)',
-              maxWidth: '180px',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {nearest.title} ({formatDistance(minDistance)})
-          </b>
+          <div className={`stats-pill-icon nearest-icon ${isNearestInside ? 'pulse-anim' : ''}`}>
+            {isNearestInside ? <MapPin size={12} /> : <Radio size={12} />}
+          </div>
+          <span className="stats-label">Nearest</span>
+          <span className="stats-value-text">
+            <b>{nearest.title}</b> <small style={{ color: isNearestInside ? '#34d399' : 'var(--text-secondary)' }}>· {formatDistance(minDistance)}</small>
+          </span>
         </div>
       )}
     </div>

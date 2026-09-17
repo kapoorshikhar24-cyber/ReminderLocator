@@ -7,11 +7,13 @@ import {
   SlidersHorizontal, 
   Sparkles, 
   Tag, 
-  Navigation,
-  Clock,
-  ArrowUpDown,
-  Filter,
-  RotateCcw
+  Navigation, 
+  Clock, 
+  ArrowUpDown, 
+  Filter, 
+  RotateCcw,
+  Layers,
+  Sparkle
 } from 'lucide-react';
 import ReminderCard from './ReminderCard';
 import { calculateDistance } from '../services/geolocation';
@@ -20,7 +22,7 @@ import { CATEGORIES, PRIORITIES } from '../types/reminder';
 export default function ReminderList({
   reminders,
   userPos,
-  activeTab,
+  activeTab = 'all',
   setActiveTab,
   searchQuery,
   setSearchQuery,
@@ -31,13 +33,20 @@ export default function ReminderList({
   onOpenNewModal,
   onSeedLocalSamples,
   onCenterMap,
+  onSnooze,
+  onUnsnooze,
 }) {
   const [sortBy, setSortBy] = useState('default'); // 'default', 'nearest', 'priority', 'newest'
-  // Filter logic: search and sorting
+
+  // Filter logic: tab, search and sorting
   const filtered = useMemo(() => {
     let result = reminders.filter((rem) => {
+      // Tab filter
+      if (activeTab === 'active' && rem.completed) return false;
+      if (activeTab === 'completed' && !rem.completed) return false;
+
       // Search query
-      if (searchQuery.trim()) {
+      if (searchQuery && searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchTitle = (rem.title || '').toLowerCase().includes(q);
         const matchNotes = (rem.notes || '').toLowerCase().includes(q);
@@ -59,14 +68,14 @@ export default function ReminderList({
         return distA - distB;
       });
     } else if (sortBy === 'priority') {
-      const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
+      const priorityOrder = { high: 3, medium: 2, low: 1 };
       result = [...result].sort((a, b) => (priorityOrder[b.priority] || 2) - (priorityOrder[a.priority] || 2));
     } else if (sortBy === 'newest') {
       result = [...result].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     }
 
     return result;
-  }, [reminders, searchQuery, sortBy, userPos]);
+  }, [reminders, activeTab, searchQuery, sortBy, userPos]);
 
   const counts = {
     all: reminders.length,
@@ -74,11 +83,12 @@ export default function ReminderList({
     completed: reminders.filter((r) => r.completed).length,
   };
 
-  const hasActiveFilters = searchQuery.trim() !== '' || sortBy !== 'default';
+  const hasActiveFilters = (searchQuery && searchQuery.trim() !== '') || sortBy !== 'default' || activeTab !== 'all';
 
   const resetAllFilters = () => {
-    setSearchQuery('');
+    setSearchQuery && setSearchQuery('');
     setSortBy('default');
+    setActiveTab && setActiveTab('all');
   };
 
   return (
@@ -97,27 +107,27 @@ export default function ReminderList({
             onClick={onOpenNewModal}
             id="btn-header-add-reminder"
           >
-            <Plus size={16} strokeWidth={2.5} />
+            <Plus size={15} strokeWidth={2.5} />
             <span>New Task</span>
           </button>
         </div>
 
         {/* Search Input Bar */}
         <div className="search-input-wrap">
-          <Search size={16} className="search-icon" />
+          <Search size={15} className="search-icon" />
           <input
             type="text"
             className="search-input"
             placeholder="Search reminders, places, tags..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => setSearchQuery && setSearchQuery(e.target.value)}
             id="input-search-reminders"
           />
           {searchQuery && (
             <button
               type="button"
               className="search-clear-btn"
-              onClick={() => setSearchQuery('')}
+              onClick={() => setSearchQuery && setSearchQuery('')}
               title="Clear search"
             >
               ✕
@@ -125,9 +135,53 @@ export default function ReminderList({
           )}
         </div>
 
+        {/* Status Tab Pills & Filter Row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+          {setActiveTab && (
+            <div className="tabs-bar">
+              <button
+                type="button"
+                className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
+                onClick={() => setActiveTab('all')}
+              >
+                <span>All</span>
+                <span className="tab-count">{counts.all}</span>
+              </button>
 
+              <button
+                type="button"
+                className={`tab-btn ${activeTab === 'active' ? 'active' : ''}`}
+                onClick={() => setActiveTab('active')}
+              >
+                <span>Active</span>
+                <span className="tab-count">{counts.active}</span>
+              </button>
 
-        {/* Sort & Quick Helper Actions */}
+              <button
+                type="button"
+                className={`tab-btn ${activeTab === 'completed' ? 'active' : ''}`}
+                onClick={() => setActiveTab('completed')}
+              >
+                <span>Done</span>
+                <span className="tab-count">{counts.completed}</span>
+              </button>
+            </div>
+          )}
+
+          {onSeedLocalSamples && (
+            <button
+              type="button"
+              className="seed-samples-btn"
+              onClick={onSeedLocalSamples}
+              title="Add fun nearby sample destination spots around your current location"
+            >
+              <Sparkles size={12} />
+              <span>Demo Spots</span>
+            </button>
+          )}
+        </div>
+
+        {/* Sort Helpers Row */}
         <div className="sort-helpers-row">
           <div className="sort-buttons-group">
             <button
@@ -136,8 +190,8 @@ export default function ReminderList({
               onClick={() => setSortBy(sortBy === 'nearest' ? 'default' : 'nearest')}
               title="Sort items by closest geographic distance to your position"
             >
-              <Navigation size={12} style={{ transform: 'rotate(45deg)' }} />
-              <span>Closest First</span>
+              <Navigation size={11} style={{ transform: 'rotate(45deg)' }} />
+              <span>Nearest</span>
             </button>
 
             <button
@@ -146,65 +200,62 @@ export default function ReminderList({
               onClick={() => setSortBy(sortBy === 'priority' ? 'default' : 'priority')}
               title="Sort by highest priority"
             >
-              <ArrowUpDown size={12} />
+              <ArrowUpDown size={11} />
               <span>Priority</span>
+            </button>
+
+            <button
+              type="button"
+              className={`sort-pill-btn ${sortBy === 'newest' ? 'active' : ''}`}
+              onClick={() => setSortBy(sortBy === 'newest' ? 'default' : 'newest')}
+              title="Sort by newly created first"
+            >
+              <Clock size={11} />
+              <span>Newest</span>
             </button>
           </div>
 
-          {onSeedLocalSamples && (
+          {hasActiveFilters && (
             <button
               type="button"
-              className="seed-samples-btn"
-              onClick={onSeedLocalSamples}
-              title="Add cute sample reminders centered right around your current GPS coordinates"
+              className="reset-filter-link"
+              onClick={resetAllFilters}
             >
-              <Sparkles size={12} />
-              <span>✨ Demo Spots</span>
+              <RotateCcw size={11} />
+              <span>Reset</span>
             </button>
           )}
         </div>
-
-        {/* Active Filter Info / Reset Summary */}
-        {hasActiveFilters && (
-          <div className="filter-summary-banner">
-            <span>
-              Showing <b>{filtered.length}</b> of {reminders.length} items
-            </span>
-            <button type="button" className="reset-filter-link" onClick={resetAllFilters}>
-              <RotateCcw size={11} />
-              <span>Reset filters</span>
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* Reminders Scroll Feed */}
+      {/* Reminders Scrollable Feed */}
       <div className="reminders-feed">
         {filtered.length === 0 ? (
-          <div className="empty-reminders-state">
-            <div className="empty-icon-bubble">
-              {searchQuery ? '🔍' : activeTab === 'completed' ? '🎉' : '🌸'}
+          <div className="empty-state">
+            <div className="empty-icon-wrap pulse-anim">
+              <MapPin size={32} color="var(--color-brand)" />
             </div>
-            <div className="empty-text-wrap">
-              <p className="empty-title">
+
+            <div className="empty-content">
+              <h3 className="empty-title">
                 {searchQuery
                   ? 'No matching reminders'
                   : activeTab === 'completed'
-                  ? 'No finished tasks yet'
-                  : 'All clear & cozy!'}
-              </p>
-              <p className="empty-subtitle">
+                  ? 'No completed tasks yet'
+                  : 'Your task list is peaceful! ✨'}
+              </h3>
+              <p className="empty-desc">
                 {searchQuery
-                  ? `We couldn't find anything matching "${searchQuery}". Try a different keyword.`
+                  ? `No results for "${searchQuery}". Try a different keyword or clear search.`
                   : activeTab === 'completed'
                   ? 'Completed reminders will show up here once you check them off!'
-                  : 'No reminders in this view yet. Tap below to create your first one or sprinkle nearby demo spots!'}
+                  : 'Create your first location-aware reminder or sprinkle nearby demo spots to explore!'}
               </p>
             </div>
 
             <div className="empty-actions-row">
               {searchQuery ? (
-                <button type="button" className="btn btn-secondary" onClick={() => setSearchQuery('')}>
+                <button type="button" className="btn btn-secondary" onClick={() => setSearchQuery && setSearchQuery('')}>
                   Clear Search
                 </button>
               ) : (
@@ -213,9 +264,9 @@ export default function ReminderList({
                     type="button"
                     className="btn btn-primary"
                     onClick={onOpenNewModal}
-                    style={{ padding: '8px 18px', fontSize: '0.84rem' }}
+                    style={{ padding: '9px 18px', fontSize: '0.84rem' }}
                   >
-                    <Plus size={16} />
+                    <Plus size={15} />
                     <span>Create Reminder</span>
                   </button>
                   {onSeedLocalSamples && (
@@ -223,9 +274,9 @@ export default function ReminderList({
                       type="button"
                       className="btn btn-secondary"
                       onClick={onSeedLocalSamples}
-                      style={{ padding: '8px 14px', fontSize: '0.84rem' }}
+                      style={{ padding: '9px 14px', fontSize: '0.84rem' }}
                     >
-                      <Sparkles size={14} color="var(--color-brand)" />
+                      <Sparkles size={13} color="var(--color-pink)" />
                       <span>Sprinkle Demos</span>
                     </button>
                   )}
@@ -244,6 +295,8 @@ export default function ReminderList({
               onDelete={onDeleteReminder}
               onSimulateArrival={onSimulateArrival}
               onCenterMap={onCenterMap}
+              onSnooze={onSnooze}
+              onUnsnooze={onUnsnooze}
             />
           ))
         )}

@@ -104,22 +104,27 @@ export default function Navbar({
         {/* Notifications Permission Button */}
         {notificationPermission !== 'granted' && (
           <button
-            className="btn btn-secondary"
+            className="btn btn-secondary nav-alert-btn"
             onClick={onRequestNotification}
             title="Enable automatic arrival notifications & background alerts"
             style={{
-              padding: '6px 12px',
+              padding: '6px 10px',
               fontSize: '0.78rem',
               borderColor: 'rgba(56, 189, 248, 0.4)',
-              background: 'rgba(56, 189, 248, 0.1)',
+              background: 'rgba(56, 189, 248, 0.12)',
               color: '#38bdf8',
               fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
             }}
           >
-            <BellRing size={14} />
-            <span>Enable Auto Alerts</span>
+            <BellRing size={14} className="pulse-anim" />
+            <span className="hide-mobile">Enable Auto Alerts</span>
+            <span className="show-mobile-only">Alerts</span>
           </button>
         )}
+
 
         {/* Sound toggle */}
         <button

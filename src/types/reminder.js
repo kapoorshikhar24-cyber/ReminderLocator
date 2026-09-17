@@ -20,3 +20,13 @@ export const RADIUS_PRESETS = [
   { value: 500, label: '500m (Neighborhood)' },
   { value: 1000, label: '1 km (Nearby area)' },
 ];
+
+export const SNOOZE_PRESETS = [
+  { value: 5, label: '5 min', shortLabel: '5m' },
+  { value: 10, label: '10 min', shortLabel: '10m' },
+  { value: 15, label: '15 min', shortLabel: '15m' },
+  { value: 30, label: '30 min', shortLabel: '30m' },
+  { value: 60, label: '1 hour', shortLabel: '1h' },
+  { value: 120, label: '2 hours', shortLabel: '2h' },
+];
+
