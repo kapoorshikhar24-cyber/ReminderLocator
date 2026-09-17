@@ -176,9 +176,9 @@ export function playDepartureChime() {
 }
 
 /**
- * Trigger device vibration (for mobile devices)
+ * Trigger device hardware vibration (for mobile devices)
  */
-export function triggerVibration(pattern = [200, 100, 200, 100, 300]) {
+export function triggerVibration(pattern = [500, 200, 500, 200, 800]) {
   if (typeof window !== 'undefined' && 'vibrate' in navigator) {
     try {
       navigator.vibrate(pattern);
@@ -187,6 +187,7 @@ export function triggerVibration(pattern = [200, 100, 200, 100, 300]) {
     }
   }
 }
+
 
 /**
  * Request system notification permission

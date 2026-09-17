@@ -13,12 +13,16 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.media.AudioAttributes;
+import android.media.AudioManager;
+import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -38,7 +42,7 @@ public class BackgroundLocationService extends Service implements LocationListen
     public static final String EXTRA_REMINDERS_JSON = "EXTRA_REMINDERS_JSON";
 
     private static final String CHANNEL_ID_SERVICE = "georemind_bg_tracking";
-    private static final String CHANNEL_ID_ALERTS = "georemind_alerts";
+    private static final String CHANNEL_ID_ALERTS = "georemind_alerts_v2";
     private static final int NOTIFICATION_ID_SERVICE = 9991;
 
     private static final String PREFS_NAME = "GeoRemindBackgroundPrefs";
@@ -122,24 +126,30 @@ public class BackgroundLocationService extends Service implements LocationListen
             serviceChannel.enableLights(false);
             manager.createNotificationChannel(serviceChannel);
 
-            // 2. High-Priority Channel for Arrival/Departure Geofence Alerts
+            // 2. High-Priority Alarm Channel for Arrival/Departure (Overrides Silent Mode)
             NotificationChannel alertChannel = new NotificationChannel(
                     CHANNEL_ID_ALERTS,
-                    "GeoRemind Geofence Alerts",
+                    "GeoRemind Arrival & Departure Alarms",
                     NotificationManager.IMPORTANCE_HIGH
             );
-            alertChannel.setDescription("High priority sound & vibration alerts when reaching reminder locations");
+            alertChannel.setDescription("High-priority alarm alerts that trigger sound and strong vibration even when phone is silent");
             alertChannel.enableVibration(true);
-            alertChannel.setVibrationPattern(new long[]{0, 300, 150, 300, 150, 500});
+            alertChannel.setVibrationPattern(new long[]{0, 500, 200, 500, 200, 800});
             alertChannel.enableLights(true);
             alertChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+            alertChannel.setBypassDnd(true);
 
-            Uri defaultSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            Uri alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+            if (alarmSound == null) {
+                alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            }
+
             AudioAttributes audioAttributes = new AudioAttributes.Builder()
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED)
                     .build();
-            alertChannel.setSound(defaultSound, audioAttributes);
+            alertChannel.setSound(alarmSound, audioAttributes);
 
             manager.createNotificationChannel(alertChannel);
         }
@@ -265,7 +275,6 @@ public class BackgroundLocationService extends Service implements LocationListen
                 }
 
                 JSONObject locObj = rem.optJSONObject("location");
-
                 if (locObj == null) continue;
 
                 double targetLat = locObj.optDouble("lat", Double.NaN);
@@ -310,8 +319,59 @@ public class BackgroundLocationService extends Service implements LocationListen
         }
     }
 
+    /**
+     * Play physical alarm audio stream and strong hardware vibration that sounds even if phone is on Silent mode.
+     */
+    private void playAlarmSoundAndVibrate() {
+        try {
+            // 1. Force hardware vibration regardless of ringer state
+            Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null && vibrator.hasVibrator()) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(VibrationEffect.createWaveform(
+                            new long[]{0, 500, 200, 500, 200, 800},
+                            -1
+                    ));
+                } else {
+                    vibrator.vibrate(new long[]{0, 500, 200, 500, 200, 800}, -1);
+                }
+            }
+
+            // 2. Play alarm ringtone over ALARM audio stream (bypasses silent switch)
+            Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+            if (alarmUri == null) {
+                alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+            }
+            if (alarmUri == null) {
+                alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            }
+
+            if (alarmUri != null) {
+                Ringtone ringtone = RingtoneManager.getRingtone(getApplicationContext(), alarmUri);
+                if (ringtone != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                                .setUsage(AudioAttributes.USAGE_ALARM)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                .setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED)
+                                .build();
+                        ringtone.setAudioAttributes(audioAttributes);
+                    } else {
+                        ringtone.setStreamType(AudioManager.STREAM_ALARM);
+                    }
+                    ringtone.play();
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error triggering alarm stream sound/vibration: " + e.getMessage());
+        }
+    }
+
     private void dispatchGeofenceAlert(String reminderId, String title, String notes, float distance, String triggerType) {
         Log.i(TAG, "GEOFENCE TRIGGERED IN BACKGROUND: " + title + " (Dist: " + Math.round(distance) + "m)");
+
+        // Trigger hardware Alarm stream sound and vibration (Silent mode override)
+        playAlarmSoundAndVibrate();
 
         // 1. Dispatch Native Heads-up System Notification on lock screen & in pocket
         NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -334,18 +394,20 @@ public class BackgroundLocationService extends Service implements LocationListen
 
             String alertBody = (notes != null && !notes.trim().isEmpty())
                     ? notes
-                    : "You are within " + Math.round(distance) + "m of your destination.";
+                    : "You reached within " + Math.round(distance) + "m of your destination.";
 
             NotificationCompat.Builder alertBuilder = new NotificationCompat.Builder(this, CHANNEL_ID_ALERTS)
                     .setSmallIcon(android.R.drawable.ic_dialog_map)
                     .setContentTitle(alertTitle)
                     .setContentText(alertBody)
                     .setStyle(new NotificationCompat.BigTextStyle().bigText(alertBody))
+                    .setCategory(NotificationCompat.CATEGORY_ALARM)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                     .setAutoCancel(true)
-                    .setVibrate(new long[]{0, 300, 150, 300, 150, 500})
+                    .setVibrate(new long[]{0, 500, 200, 500, 200, 800})
                     .setDefaults(Notification.DEFAULT_ALL)
+                    .setFullScreenIntent(pendingIntent, true)
                     .setContentIntent(pendingIntent);
 
             manager.notify(notifId, alertBuilder.build());
