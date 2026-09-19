@@ -73,15 +73,13 @@ export const MAP_PROVIDERS = [
 const MAP_SETTINGS_KEY = 'georemind_map_settings_v2';
 
 export function getMapConfig() {
-  const envGoogleKey = import.meta.env?.VITE_GOOGLE_MAPS_API_KEY || '';
-  const envProvider = envGoogleKey.trim()
-    ? 'google'
-    : (import.meta.env?.VITE_MAP_PROVIDER || 'osm');
-  const envKey = import.meta.env?.VITE_MAP_API_KEY || '';
-  const envCustomUrl = import.meta.env?.VITE_MAP_CUSTOM_URL || '';
+  const envGoogleKey = (import.meta.env?.VITE_GOOGLE_MAPS_API_KEY || '').trim();
+  const envProvider = (import.meta.env?.VITE_MAP_PROVIDER || 'osm').trim();
+  const envKey = (import.meta.env?.VITE_MAP_API_KEY || '').trim();
+  const envCustomUrl = (import.meta.env?.VITE_MAP_CUSTOM_URL || '').trim();
 
   const defaults = {
-    providerId: envProvider,
+    providerId: envProvider || 'osm',
     apiKey: envKey,
     googleApiKey: envGoogleKey,
     customUrl: envCustomUrl,
@@ -96,7 +94,7 @@ export function getMapConfig() {
       return {
         ...defaults,
         ...parsed,
-        // If googleApiKey is set in env and not in storage, prioritize env
+        providerId: parsed.providerId || defaults.providerId,
         googleApiKey: parsed.googleApiKey || envGoogleKey,
       };
     }

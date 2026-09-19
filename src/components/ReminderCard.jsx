@@ -29,6 +29,20 @@ export default function ReminderCard({
   onUnsnooze,
 }) {
   const [showSnoozeMenu, setShowSnoozeMenu] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+
+  const handleCheckboxClick = (e) => {
+    e.stopPropagation();
+    if (!reminder.completed) {
+      setIsCompleting(true);
+      setTimeout(() => {
+        onToggleComplete(reminder.id);
+        setIsCompleting(false);
+      }, 350);
+    } else {
+      onToggleComplete(reminder.id);
+    }
+  };
 
   const isLocationBased = !!reminder.location && typeof reminder.location.lat === 'number';
   
@@ -67,6 +81,8 @@ export default function ReminderCard({
   return (
     <article
       className={`reminder-card ${reminder.completed ? 'completed' : ''} ${
+        isCompleting ? 'completing' : ''
+      } ${
         isInside && !reminder.completed && !isSnoozed ? 'inside-geofence' : ''
       }`}
       id={`reminder-card-${reminder.id}`}
@@ -79,19 +95,16 @@ export default function ReminderCard({
           {/* Custom Bouncy Marshmallow Checkbox */}
           <button
             type="button"
-            className={`checkbox-custom ${reminder.completed ? 'checked' : ''}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleComplete(reminder.id);
-            }}
-            title={reminder.completed ? 'Mark active' : 'Mark as done! ✨'}
-            aria-label={reminder.completed ? 'Mark active' : 'Mark as done'}
+            className={`checkbox-custom ${reminder.completed || isCompleting ? 'checked' : ''}`}
+            onClick={handleCheckboxClick}
+            title={reminder.completed ? 'Mark active' : 'Complete and remove from list ✨'}
+            aria-label={reminder.completed ? 'Mark active' : 'Mark as done and remove from UI'}
           >
-            {reminder.completed && <Check size={14} strokeWidth={3} />}
+            {(reminder.completed || isCompleting) && <Check size={14} strokeWidth={3} />}
           </button>
 
           <div style={{ minWidth: 0, flex: 1 }}>
-            <h3 className={`card-title ${reminder.completed ? 'strike' : ''}`}>
+            <h3 className={`card-title ${reminder.completed || isCompleting ? 'strike' : ''}`}>
               {reminder.title}
             </h3>
           </div>

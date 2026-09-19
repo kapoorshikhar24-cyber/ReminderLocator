@@ -42,6 +42,17 @@
   
   --transition-bouncy: all 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
   --transition-smooth: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Mobile Notification Panel & Safe Area Insets */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --header-safe-gap: env(safe-area-inset-top, 0px);
+}
+
+.platform-native, .display-standalone {
+  --header-safe-gap: max(env(safe-area-inset-top, 0px), 28px);
 }
 
 [data-theme="light"] {
@@ -115,11 +126,12 @@ body {
 
 /* Top Navbar */
 .navbar {
-  height: 64px;
+  height: calc(64px + var(--header-safe-gap, env(safe-area-inset-top, 0px)));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: var(--header-safe-gap, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) 0 max(24px, env(safe-area-inset-left, 0px));
+  box-sizing: border-box;
   z-index: 1000;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-surface);
@@ -762,6 +774,66 @@ body {
   background: rgba(15, 23, 42, 0.55);
   border-left-color: #64748b;
   box-shadow: none;
+}
+
+.reminder-card.completing {
+  animation: cardCompleteOut 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes cardCompleteOut {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    max-height: 250px;
+  }
+  40% {
+    transform: scale(0.96) translateX(12px);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(0.9) translateX(30px);
+    opacity: 0;
+    max-height: 0;
+    margin-top: -10px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+.clear-completed-header-btn {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  color: #f87171 !important;
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  transition: var(--transition-bouncy);
+}
+
+.clear-completed-header-btn:hover {
+  background: rgba(239, 68, 68, 0.22) !important;
+  border-color: #ef4444 !important;
+  transform: translateY(-1px);
+}
+
+.clear-completed-link {
+  background: transparent;
+  border: 1px dashed rgba(239, 68, 68, 0.35);
+  border-radius: var(--radius-full);
+  color: #f87171;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  transition: var(--transition-bouncy);
+}
+
+.clear-completed-link:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
 }
 
 .reminder-card.inside-geofence {
@@ -1530,14 +1602,19 @@ body {
   .app-container {
     height: 100vh;
     height: 100dvh;
-    padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     overflow: hidden;
+    box-sizing: border-box;
   }
 
   .navbar {
-    padding: 0 12px;
-    height: 54px;
+    padding-top: max(var(--header-safe-gap, env(safe-area-inset-top, 0px)), 8px);
+    padding-bottom: 8px;
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+    height: calc(56px + max(var(--header-safe-gap, env(safe-area-inset-top, 0px)), 8px));
     gap: 8px;
+    box-sizing: border-box;
   }
 
   .brand {
@@ -1577,11 +1654,13 @@ body {
     padding: 6px 12px;
     gap: 8px;
     font-size: 0.72rem;
+    flex-shrink: 0;
   }
 
   .main-workspace {
     grid-template-columns: 1fr;
-    height: calc(100dvh - 54px - 36px - 62px - env(safe-area-inset-bottom, 0px));
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
   }
 
@@ -1739,9 +1818,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 16px;
+  padding: calc(24px + var(--header-safe-gap, env(safe-area-inset-top, 0px))) 16px calc(24px + env(safe-area-inset-bottom, 0px)) 16px;
+  box-sizing: border-box;
   background-color: var(--bg-app);
-  overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   z-index: 10;
 }
 
@@ -2070,3 +2151,118 @@ body {
   justify-content: center;
   background-color: var(--bg-app);
 }
+
+/* Biometric Authentication Styles */
+.biometric-auth-btn {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.biometric-auth-btn:hover:not(:disabled) {
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 22px rgba(236, 72, 153, 0.3) !important;
+  border-color: rgba(236, 72, 153, 0.7) !important;
+}
+
+.biometric-auth-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.pulse-anim {
+  animation: cuteBiometricPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes cuteBiometricPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.75;
+  }
+}
+
+.scale-up-anim {
+  animation: cuteScaleUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes cuteScaleUp {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.spin-slow {
+  animation: spinSlow 2s linear infinite;
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================================================
+   Accessibility & Mobile UX Hardening (WCAG & SECURITY_REVIEW Compliance)
+   ========================================================================== */
+
+/* 1. Strong focus-visible outlines for keyboard accessibility */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-brand, #38bdf8) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25) !important;
+}
+
+/* 2. Minimum 46px touch targets for primary interactive controls on touch devices */
+@media (pointer: coarse), (max-width: 850px) {
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .auth-tab-btn,
+  .tab-btn,
+  .auth-submit-btn,
+  .biometric-auth-btn {
+    min-height: 46px;
+  }
+
+  .form-input,
+  .search-input,
+  .form-select,
+  .form-textarea {
+    min-height: 46px;
+  }
+}
+
+/* 3. Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .auth-bg-orb,
+  .pulse-anim,
+  .spin-slow,
+  .arrival-icon-pulse,
+  .auth-brand-badge {
+    animation: none !important;
+  }
+}
+

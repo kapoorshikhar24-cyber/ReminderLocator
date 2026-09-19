@@ -10,6 +10,8 @@ import SimulatorControl from './components/SimulatorControl';
 import MapSettingsModal from './components/MapSettingsModal';
 import AuthModal from './components/AuthModal';
 import AuthScreen from './components/AuthScreen';
+import BiometricPromptModal from './components/BiometricPromptModal';
+import SamsungOptimizationModal from './components/SamsungOptimizationModal';
 import { useAuth } from './context/AuthContext';
 import { 
   handleUserLoginSync, 
@@ -48,11 +50,13 @@ import {
   syncRemindersToBackground,
   requestBatteryOptimizationExemption,
   checkBackgroundStatus,
+  checkDeviceOptimizationStatus,
+  getDeviceInfo,
   addBackgroundLocationListener,
   addBackgroundGeofenceListener,
   isNative
 } from './services/nativeLocation';
-import { List, Map as MapIcon, Compass, PlusCircle, Plus, Check, Sliders, Navigation, ShieldCheck, BatteryCharging } from 'lucide-react';
+import { List, Map as MapIcon, Compass, PlusCircle, Plus, Check, Sliders, Navigation, ShieldCheck, BatteryCharging, Smartphone } from 'lucide-react';
 
 export default function App() {
   const { user, loading, signOut } = useAuth();
@@ -85,6 +89,9 @@ export default function App() {
   const [triggeredReminder, setTriggeredReminder] = useState(null);
   const [isMapSettingsOpen, setIsMapSettingsOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isSamsungModalOpen, setIsSamsungModalOpen] = useState(false);
+  const [deviceInfo, setDeviceInfo] = useState(null);
+  const [showOptimizationBanner, setShowOptimizationBanner] = useState(false);
   const [mapConfig, setMapConfig] = useState(() => getMapConfig());
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -269,9 +276,21 @@ export default function App() {
 
   // Auto-request notifications and background permissions on startup by default
   useEffect(() => {
-    const timer = setTimeout(() => {
-      handleRequestNotification().catch(console.warn);
-    }, 800);
+    const timer = setTimeout(async () => {
+      try {
+        await handleRequestNotification();
+        const info = await getDeviceInfo();
+        setDeviceInfo(info);
+        if (isNative()) {
+          const opt = await checkDeviceOptimizationStatus();
+          if (opt && !opt.isIgnoringBatteryOptimizations) {
+            setShowOptimizationBanner(true);
+          }
+        }
+      } catch (err) {
+        console.warn('Startup check error:', err);
+      }
+    }, 1000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -351,11 +370,35 @@ export default function App() {
     });
   }, [userPos, reminders]);
 
-  // Toggle completion
+  // Toggle completion & smoothly remove completed tasks from active UI
   const handleToggleComplete = (id) => {
-    setReminders((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, completed: !r.completed } : r))
-    );
+    setReminders((prev) => {
+      const target = prev.find((r) => r.id === id);
+      if (!target) return prev;
+      const willBeCompleted = !target.completed;
+      if (willBeCompleted) {
+        setToastMessage(`✨ "${target.title}" completed and cleared from active view!`);
+        setTimeout(() => setToastMessage(null), 3000);
+      }
+      return prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              completed: willBeCompleted,
+              completedAt: willBeCompleted ? Date.now() : null,
+            }
+          : r
+      );
+    });
+  };
+
+  // Remove all completed tasks completely from UI & state
+  const handleClearCompleted = () => {
+    const completedTasks = reminders.filter((r) => r.completed);
+    if (completedTasks.length === 0) return;
+    setReminders((prev) => prev.filter((r) => !r.completed));
+    setToastMessage(`🧹 Removed ${completedTasks.length} completed task${completedTasks.length > 1 ? 's' : ''} from UI!`);
+    setTimeout(() => setToastMessage(null), 3000);
   };
 
   // Delete reminder
@@ -600,9 +643,66 @@ export default function App() {
         onOpenNewModal={handleOpenNewModal}
         onOpenMapSettings={() => setIsMapSettingsOpen(true)}
         onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenDeviceOptimization={() => setIsSamsungModalOpen(true)}
         onLogout={signOut}
         user={user}
       />
+
+      {/* Samsung Galaxy & Android Device Optimization Banner */}
+      {showOptimizationBanner && (
+        <div
+          style={{
+            background: 'linear-gradient(90deg, rgba(14, 165, 233, 0.18), rgba(59, 130, 246, 0.18))',
+            borderBottom: '1px solid rgba(56, 189, 248, 0.3)',
+            padding: '8px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            fontSize: '0.8rem',
+            color: '#e0f2fe',
+            zIndex: 20,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            <Smartphone size={16} className="text-sky-400 shrink-0" />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <strong>{deviceInfo?.isSamsung ? 'Samsung Galaxy' : 'Device'} Alert:</strong> Set Battery to "Unrestricted" so reminders trigger when phone is locked.
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <button
+              onClick={() => setIsSamsungModalOpen(true)}
+              style={{
+                background: '#0284c7',
+                color: '#fff',
+                border: 'none',
+                padding: '4px 10px',
+                borderRadius: '9999px',
+                fontWeight: 700,
+                fontSize: '0.74rem',
+                cursor: 'pointer',
+              }}
+            >
+              Configure
+            </button>
+            <button
+              onClick={() => setShowOptimizationBanner(false)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#94a3b8',
+                cursor: 'pointer',
+                padding: '2px',
+                fontSize: '0.85rem',
+              }}
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Overview Stats Bar */}
       <StatsBar reminders={reminders} userPos={userPos} />
@@ -619,6 +719,7 @@ export default function App() {
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             onToggleComplete={handleToggleComplete}
+            onClearCompleted={handleClearCompleted}
             onEditReminder={handleEditReminder}
             onDeleteReminder={handleDeleteReminder}
             onSimulateArrival={handleSimulateArrival}
@@ -820,6 +921,13 @@ export default function App() {
         onClose={() => setIsMapSettingsOpen(false)}
         currentConfig={mapConfig}
         onSaveConfig={handleSaveMapConfig}
+        onOpenDeviceOptimization={() => setIsSamsungModalOpen(true)}
+      />
+
+      {/* Samsung Galaxy & Android Device Optimization Assistant Modal */}
+      <SamsungOptimizationModal
+        isOpen={isSamsungModalOpen}
+        onClose={() => setIsSamsungModalOpen(false)}
       />
 
       {/* User Auth & Cross-Device Sync Modal */}
@@ -831,12 +939,15 @@ export default function App() {
         onForceSync={() => handleUserLoginSync(user, reminders, mapConfig, userPos)}
       />
 
+      {/* First-Time Biometric Setup Modal */}
+      <BiometricPromptModal />
+
       {/* Floating Status Toast */}
       {toastMessage && (
         <div
           style={{
             position: 'fixed',
-            top: '76px',
+            top: 'calc(76px + var(--header-safe-gap, env(safe-area-inset-top, 0px)))',
             left: '50%',
             transform: 'translateX(-50%)',
             background: 'var(--bg-surface-elevated)',

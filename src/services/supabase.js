@@ -168,7 +168,6 @@ export async function saveRemoteUserSettings(userId, settingsData) {
 
   const payload = {
     user_id: userId,
-    google_maps_api_key: settingsData.googleMapsApiKey ?? null,
     map_provider: settingsData.mapProvider ?? 'osm',
     default_location: settingsData.defaultLocation ?? null,
     preferences: settingsData.preferences ?? {},

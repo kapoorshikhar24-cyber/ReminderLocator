@@ -16,12 +16,26 @@ import {
   ChevronDown,
   ChevronUp,
   Zap,
-  LogIn
+  LogIn,
+  Fingerprint,
+  ScanFace
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function AuthScreen({ onLoginSuccess }) {
-  const { signIn, signUp, continueAsGuest, isConfigured, updateSupabaseConfig, config, getStoredAccounts } = useAuth();
+  const { 
+    signIn, 
+    signUp, 
+    continueAsGuest, 
+    isConfigured, 
+    updateSupabaseConfig, 
+    config, 
+    getStoredAccounts,
+    biometricAvailable,
+    biometricType,
+    signInWithBiometrics,
+    getRegisteredBiometrics
+  } = useAuth();
   
   const [mode, setMode] = useState('signup'); // 'signup' or 'login'
   const [userId, setUserId] = useState('');
@@ -72,8 +86,8 @@ export default function AuthScreen({ onLoginSuccess }) {
         if (!password) {
           throw new Error('Please set a password.');
         }
-        if (password.length < 4) {
-          throw new Error('Password must be at least 4 characters long.');
+        if (password.length < 8) {
+          throw new Error('Password must be at least 8 characters long for security.');
         }
         if (password !== confirmPassword) {
           throw new Error('Passwords do not match. Please re-enter.');
@@ -114,6 +128,26 @@ export default function AuthScreen({ onLoginSuccess }) {
       setShowCloudConfig(false);
     } catch (err) {
       setErrorMsg(err.message || 'Failed to update cloud configuration.');
+    }
+  };
+
+  const enrolledBiometrics = getRegisteredBiometrics().filter((b) => b.enabled);
+  const isFaceType = (biometricType || '').toLowerCase().includes('face');
+  const BiometricIcon = isFaceType ? ScanFace : Fingerprint;
+
+  const handleBiometricLogin = async () => {
+    setIsLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const res = await signInWithBiometrics(userId.trim() || null);
+      setSuccessMsg(`Welcome back, ${res.user.displayName || res.user.userId}! Verified with ${biometricType}.`);
+      if (onLoginSuccess) onLoginSuccess();
+    } catch (err) {
+      console.warn('Biometric login failed:', err);
+      setErrorMsg(err.message || 'Biometric authentication failed. Please enter your password below.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -267,6 +301,43 @@ export default function AuthScreen({ onLoginSuccess }) {
           </div>
         )}
 
+        {/* Biometric One-Tap Login Button */}
+        {mode === 'login' && (biometricAvailable || enrolledBiometrics.length > 0) && (
+          <div style={{ marginBottom: '16px' }}>
+            <button
+              type="button"
+              className="btn biometric-auth-btn"
+              onClick={handleBiometricLogin}
+              disabled={isLoading}
+              style={{
+                width: '100%',
+                padding: '12px 18px',
+                fontSize: '0.9rem',
+                fontWeight: 750,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.18), rgba(236, 72, 153, 0.18))',
+                border: '1.5px solid rgba(236, 72, 153, 0.45)',
+                color: 'var(--text-primary)',
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: '0 4px 18px rgba(236, 72, 153, 0.18)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <BiometricIcon size={20} className={isLoading ? 'pulse-anim' : ''} style={{ color: '#f472b6' }} />
+              <span>Sign in with {biometricType}</span>
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '14px', opacity: 0.5 }}>
+              <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border-subtle)' }} />
+              <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)' }}>OR ENTER PASSWORD</span>
+              <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border-subtle)' }} />
+            </div>
+          </div>
+        )}
+
         {/* Primary Auth Form */}
         <form onSubmit={handleSubmit} className="auth-form">
           {mode === 'signup' && (
@@ -329,10 +400,11 @@ export default function AuthScreen({ onLoginSuccess }) {
                 id="auth-password"
                 type={showPassword ? 'text' : 'password'}
                 className="form-input"
-                placeholder="Enter password (min 4 characters)"
+                placeholder="Enter password (min 8 characters)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={8}
                 autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
               />
               <button

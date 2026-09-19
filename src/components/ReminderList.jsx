@@ -27,6 +27,7 @@ export default function ReminderList({
   searchQuery,
   setSearchQuery,
   onToggleComplete,
+  onClearCompleted,
   onEditReminder,
   onDeleteReminder,
   onSimulateArrival,
@@ -38,10 +39,11 @@ export default function ReminderList({
 }) {
   const [sortBy, setSortBy] = useState('default'); // 'default', 'nearest', 'priority', 'newest'
 
-  // Filter logic: tab, search and sorting
+  // Filter logic: tab, search and sorting (Completed tasks are removed from the active UI)
   const filtered = useMemo(() => {
     let result = reminders.filter((rem) => {
-      // Tab filter
+      // Tab filter: 'all' and 'active' views automatically remove completed tasks from the UI
+      if (activeTab === 'all' && rem.completed) return false;
       if (activeTab === 'active' && rem.completed) return false;
       if (activeTab === 'completed' && !rem.completed) return false;
 
@@ -78,7 +80,7 @@ export default function ReminderList({
   }, [reminders, activeTab, searchQuery, sortBy, userPos]);
 
   const counts = {
-    all: reminders.length,
+    all: reminders.filter((r) => !r.completed).length,
     active: reminders.filter((r) => !r.completed).length,
     completed: reminders.filter((r) => r.completed).length,
   };
@@ -101,15 +103,29 @@ export default function ReminderList({
             <span className="panel-count-pill">{counts.active} active</span>
           </div>
 
-          <button
-            type="button"
-            className="btn btn-primary panel-add-btn"
-            onClick={onOpenNewModal}
-            id="btn-header-add-reminder"
-          >
-            <Plus size={15} strokeWidth={2.5} />
-            <span>New Task</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {counts.completed > 0 && onClearCompleted && (
+              <button
+                type="button"
+                className="btn btn-secondary clear-completed-header-btn"
+                onClick={onClearCompleted}
+                title="Remove and purge all completed tasks from UI"
+                style={{ padding: '6px 10px', fontSize: '0.74rem' }}
+              >
+                <span>Clear Done ({counts.completed})</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              className="btn btn-primary panel-add-btn"
+              onClick={onOpenNewModal}
+              id="btn-header-add-reminder"
+            >
+              <Plus size={15} strokeWidth={2.5} />
+              <span>New Task</span>
+            </button>
+          </div>
         </div>
 
         {/* Search Input Bar */}
@@ -141,17 +157,8 @@ export default function ReminderList({
             <div className="tabs-bar">
               <button
                 type="button"
-                className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
+                className={`tab-btn ${activeTab === 'all' || activeTab === 'active' ? 'active' : ''}`}
                 onClick={() => setActiveTab('all')}
-              >
-                <span>All</span>
-                <span className="tab-count">{counts.all}</span>
-              </button>
-
-              <button
-                type="button"
-                className={`tab-btn ${activeTab === 'active' ? 'active' : ''}`}
-                onClick={() => setActiveTab('active')}
               >
                 <span>Active</span>
                 <span className="tab-count">{counts.active}</span>
@@ -215,16 +222,29 @@ export default function ReminderList({
             </button>
           </div>
 
-          {hasActiveFilters && (
-            <button
-              type="button"
-              className="reset-filter-link"
-              onClick={resetAllFilters}
-            >
-              <RotateCcw size={11} />
-              <span>Reset</span>
-            </button>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+            {activeTab === 'completed' && counts.completed > 0 && onClearCompleted && (
+              <button
+                type="button"
+                className="clear-completed-link"
+                onClick={onClearCompleted}
+                title="Remove all completed tasks from UI"
+              >
+                <span>🧹 Clear Done ({counts.completed})</span>
+              </button>
+            )}
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                className="reset-filter-link"
+                onClick={resetAllFilters}
+              >
+                <RotateCcw size={11} />
+                <span>Reset</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

@@ -16,11 +16,10 @@ BEGIN
 END;
 $$;
 
--- 2. Create table for User Settings (Stores user preferences, map config, etc.)
+-- 2. Create table for User Settings (Stores user preferences, map config, etc. without storing sensitive API keys)
 CREATE TABLE IF NOT EXISTS public.user_settings (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  google_maps_api_key TEXT,
-  map_provider TEXT DEFAULT 'osm' CHECK (map_provider IN ('osm', 'google', 'satellite', 'dark')),
+  map_provider TEXT DEFAULT 'osm' CHECK (map_provider IN ('osm', 'google', 'satellite', 'dark', 'carto', 'mapbox', 'stadia', 'custom')),
   default_location JSONB,
   preferences JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -32,6 +31,7 @@ ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
 
 -- Revoke default public access, only allow authenticated users
 REVOKE ALL ON public.user_settings FROM PUBLIC;
+REVOKE ALL ON public.user_settings FROM anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_settings TO authenticated;
 
 -- Users can only read their own settings
@@ -42,14 +42,30 @@ CREATE POLICY "Users can view own settings"
   TO authenticated
   USING (auth.uid() = user_id);
 
--- Users can only insert/update their own settings
-DROP POLICY IF EXISTS "Users can insert/update own settings" ON public.user_settings;
-CREATE POLICY "Users can insert/update own settings"
+-- Users can only insert their own settings
+DROP POLICY IF EXISTS "Users can insert own settings" ON public.user_settings;
+CREATE POLICY "Users can insert own settings"
   ON public.user_settings
-  FOR ALL
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+-- Users can only update their own settings
+DROP POLICY IF EXISTS "Users can update own settings" ON public.user_settings;
+CREATE POLICY "Users can update own settings"
+  ON public.user_settings
+  FOR UPDATE
   TO authenticated
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
+
+-- Users can only delete their own settings
+DROP POLICY IF EXISTS "Users can delete own settings" ON public.user_settings;
+CREATE POLICY "Users can delete own settings"
+  ON public.user_settings
+  FOR DELETE
+  TO authenticated
+  USING (auth.uid() = user_id);
 
 -- Trigger to keep updated_at current
 DROP TRIGGER IF EXISTS set_user_settings_updated_at ON public.user_settings;
@@ -81,6 +97,7 @@ ALTER TABLE public.reminders ENABLE ROW LEVEL SECURITY;
 
 -- Revoke default public access, only allow authenticated users
 REVOKE ALL ON public.reminders FROM PUBLIC;
+REVOKE ALL ON public.reminders FROM anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.reminders TO authenticated;
 
 -- Users can only view their own reminders

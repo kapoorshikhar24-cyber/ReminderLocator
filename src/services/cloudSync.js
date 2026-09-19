@@ -21,12 +21,8 @@ export async function handleUserLoginSync(user, currentReminders, currentMapConf
     let updatedDefaultLoc = currentDefaultLoc;
 
     if (remoteSettings) {
-      // If remote has a Google API Key, apply it locally!
-      if (remoteSettings.google_maps_api_key) {
-        updatedMapConfig.googleApiKey = remoteSettings.google_maps_api_key;
-        if (remoteSettings.map_provider) {
-          updatedMapConfig.providerId = remoteSettings.map_provider;
-        }
+      if (remoteSettings.map_provider) {
+        updatedMapConfig.providerId = remoteSettings.map_provider;
         saveMapConfig(updatedMapConfig);
       }
 
@@ -36,9 +32,8 @@ export async function handleUserLoginSync(user, currentReminders, currentMapConf
         saveDefaultLocation(remoteSettings.default_location);
       }
     } else {
-      // First time this user logs in: upload local settings to cloud!
+      // First time this user logs in: upload local preferences (without API keys) to cloud!
       await saveRemoteUserSettings(user.id, {
-        googleMapsApiKey: currentMapConfig?.googleApiKey || '',
         mapProvider: currentMapConfig?.providerId || 'osm',
         defaultLocation: currentDefaultLoc,
       });
@@ -68,13 +63,12 @@ export async function handleUserLoginSync(user, currentReminders, currentMapConf
 }
 
 /**
- * Push updated settings to Supabase whenever user edits API key or map settings
+ * Push updated settings to Supabase whenever user edits map settings (without sensitive API keys)
  */
 export async function pushSettingsToCloud(userId, mapConfig, defaultLoc) {
   if (!userId) return;
   try {
     await saveRemoteUserSettings(userId, {
-      googleMapsApiKey: mapConfig.googleApiKey || '',
       mapProvider: mapConfig.providerId || 'osm',
       defaultLocation: defaultLoc,
     });

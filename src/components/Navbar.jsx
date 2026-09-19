@@ -14,7 +14,8 @@ import {
   Sliders,
   User,
   Zap,
-  LogOut
+  LogOut,
+  Smartphone
 } from 'lucide-react';
 import { requestScreenWakeLock, releaseScreenWakeLock, isWakeLockActive, requestBatteryOptimizationExemption, isNative } from '../services/nativeLocation';
 
@@ -31,6 +32,7 @@ export default function Navbar({
   onOpenNewModal,
   onOpenMapSettings,
   onOpenAuth,
+  onOpenDeviceOptimization,
   onLogout,
   user,
   nearestReminder,
@@ -151,6 +153,19 @@ export default function Navbar({
           title="Preferences & Settings (Maps, Battery GPS, Sounds)"
         >
           <Sliders size={18} />
+        </button>
+
+        {/* Samsung & Device Battery Optimization */}
+        <button
+          className="btn-icon"
+          onClick={onOpenDeviceOptimization}
+          title="Samsung Galaxy & Device Background Optimization"
+          style={{
+            borderColor: 'rgba(56, 189, 248, 0.4)',
+            color: '#38bdf8',
+          }}
+        >
+          <Smartphone size={17} />
         </button>
 
         {/* User Profile Badge */}

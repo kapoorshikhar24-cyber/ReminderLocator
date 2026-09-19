@@ -447,3 +447,91 @@ export async function releaseScreenWakeLock() {
 export function isWakeLockActive() {
   return wakeLockSentinel !== null && !wakeLockSentinel.released;
 }
+
+// ==========================================
+// Samsung Galaxy & Android Device Optimization
+// ==========================================
+
+/**
+ * Retrieve hardware and manufacturer info
+ */
+export async function getDeviceInfo() {
+  if (isNative() && BackgroundLocation?.getDeviceInfo) {
+    try {
+      return await BackgroundLocation.getDeviceInfo();
+    } catch (err) {
+      console.warn('Error fetching native device info:', err);
+    }
+  }
+
+  // Browser / Web fallback detection
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : '';
+  const isSamsung = ua.includes('samsung') || ua.includes('sm-');
+  return {
+    manufacturer: isSamsung ? 'Samsung' : 'Standard',
+    brand: isSamsung ? 'Samsung' : 'Standard',
+    model: isSamsung ? 'Galaxy Device' : 'Standard Device',
+    sdkInt: 35,
+    isSamsung,
+  };
+}
+
+/**
+ * Open Samsung Device Care Battery settings or direct App Info settings
+ */
+export async function openSamsungBatterySettings() {
+  if (isNative()) {
+    if (BackgroundLocation?.openSamsungBatterySettings) {
+      try {
+        return await BackgroundLocation.openSamsungBatterySettings();
+      } catch (err) {
+        console.warn('Error calling openSamsungBatterySettings:', err);
+      }
+    }
+    if (BackgroundLocation?.openAppSettings) {
+      try {
+        return await BackgroundLocation.openAppSettings();
+      } catch (err) {
+        console.warn('Error calling openAppSettings:', err);
+      }
+    }
+  }
+  return { success: false };
+}
+
+/**
+ * Open standard App Settings for any Android OEM (Pixel, OnePlus, Xiaomi, etc.)
+ */
+export async function openAppSettings() {
+  if (isNative() && BackgroundLocation?.openAppSettings) {
+    try {
+      return await BackgroundLocation.openAppSettings();
+    } catch (err) {
+      console.warn('Error opening app settings:', err);
+    }
+  }
+  return { success: false };
+}
+
+/**
+ * Comprehensive background & battery optimization status check
+ */
+export async function checkDeviceOptimizationStatus() {
+  if (isNative() && BackgroundLocation?.checkBackgroundStatus) {
+    try {
+      return await BackgroundLocation.checkBackgroundStatus();
+    } catch (err) {
+      console.warn('Error checking device optimization status:', err);
+    }
+  }
+  return {
+    hasLocationPermission: true,
+    hasBackgroundPermission: true,
+    isIgnoringBatteryOptimizations: true,
+    canScheduleExactAlarms: true,
+    isSamsung: false,
+    manufacturer: 'Browser',
+    model: 'Web Client',
+  };
+}
+

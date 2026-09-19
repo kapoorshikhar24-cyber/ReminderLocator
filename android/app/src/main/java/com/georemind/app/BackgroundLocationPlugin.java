@@ -20,6 +20,9 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 
+import android.app.AlarmManager;
+import android.content.ComponentName;
+
 @CapacitorPlugin(
         name = "BackgroundLocation",
         permissions = {
@@ -116,6 +119,22 @@ public class BackgroundLocationPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void getDeviceInfo(PluginCall call) {
+        String manufacturer = Build.MANUFACTURER != null ? Build.MANUFACTURER : "";
+        String brand = Build.BRAND != null ? Build.BRAND : "";
+        String model = Build.MODEL != null ? Build.MODEL : "";
+        boolean isSamsung = manufacturer.equalsIgnoreCase("samsung") || brand.equalsIgnoreCase("samsung");
+
+        JSObject ret = new JSObject();
+        ret.put("manufacturer", manufacturer);
+        ret.put("brand", brand);
+        ret.put("model", model);
+        ret.put("sdkInt", Build.VERSION.SDK_INT);
+        ret.put("isSamsung", isSamsung);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void requestIgnoreBatteryOptimizations(PluginCall call) {
         Context context = getContext();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -145,6 +164,71 @@ public class BackgroundLocationPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void openSamsungBatterySettings(PluginCall call) {
+        Context context = getContext();
+        String packageName = context.getPackageName();
+        boolean launched = false;
+
+        // Try Samsung Device Care / Smart Manager battery intent variants
+        String[][] samsungIntents = {
+                {"com.samsung.android.lool", "com.samsung.android.sm.ui.battery.BatteryActivity"},
+                {"com.samsung.android.sm", "com.samsung.android.sm.ui.battery.BatteryActivity"},
+                {"com.samsung.android.lool", "com.samsung.android.sm.battery.ui.BatteryActivity"},
+                {"com.samsung.android.sm", "com.samsung.android.sm.battery.ui.BatteryActivity"},
+                {"com.samsung.android.sm_cn", "com.samsung.android.sm.ui.battery.BatteryActivity"}
+        };
+
+        for (String[] target : samsungIntents) {
+            try {
+                Intent intent = new Intent();
+                intent.setComponent(new ComponentName(target[0], target[1]));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+                launched = true;
+                break;
+            } catch (Exception ignored) {
+            }
+        }
+
+        // Fallback for all phones: Open App Details Settings directly
+        if (!launched) {
+            try {
+                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                intent.setData(Uri.parse("package:" + packageName));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+                launched = true;
+            } catch (Exception e) {
+                Log.w(TAG, "Could not open app details settings: " + e.getMessage());
+            }
+        }
+
+        JSObject ret = new JSObject();
+        ret.put("success", launched);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void openAppSettings(PluginCall call) {
+        Context context = getContext();
+        String packageName = context.getPackageName();
+        boolean launched = false;
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + packageName));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+            launched = true;
+        } catch (Exception e) {
+            Log.w(TAG, "Could not open app settings: " + e.getMessage());
+        }
+
+        JSObject ret = new JSObject();
+        ret.put("success", launched);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void checkBackgroundStatus(PluginCall call) {
         Context context = getContext();
         boolean hasFine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
@@ -162,10 +246,17 @@ public class BackgroundLocationPlugin extends Plugin {
             }
         }
 
+        String manufacturer = Build.MANUFACTURER != null ? Build.MANUFACTURER : "";
+        String brand = Build.BRAND != null ? Build.BRAND : "";
+        boolean isSamsung = manufacturer.equalsIgnoreCase("samsung") || brand.equalsIgnoreCase("samsung");
+
         JSObject ret = new JSObject();
         ret.put("hasLocationPermission", hasFine || hasCoarse);
         ret.put("hasBackgroundPermission", hasBackground);
         ret.put("isIgnoringBatteryOptimizations", isIgnoringBattery);
+        ret.put("isSamsung", isSamsung);
+        ret.put("manufacturer", manufacturer);
+        ret.put("model", Build.MODEL != null ? Build.MODEL : "");
         call.resolve(ret);
     }
 }

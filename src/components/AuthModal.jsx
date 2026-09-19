@@ -13,7 +13,9 @@ import {
   Key, 
   ExternalLink,
   AlertCircle,
-  Database
+  Database,
+  Fingerprint,
+  ScanFace
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -32,7 +34,16 @@ export default function AuthModal({
     signOut, 
     resetPassword, 
     updateSupabaseConfig, 
-    config 
+    config,
+    biometricAvailable,
+    biometricType,
+    signInWithBiometrics,
+    registerBiometricsForUser,
+    toggleBiometrics,
+    removeBiometrics,
+    isBiometricEnrolled,
+    getEnrolledBiometric,
+    getRegisteredBiometrics
   } = useAuth();
 
   const [mode, setMode] = useState('login'); // 'login', 'signup', 'reset', 'config'
@@ -108,6 +119,56 @@ export default function AuthModal({
     onClose();
   };
 
+  const currentUserId = user?.userId || user?.email;
+  const enrolled = currentUserId ? isBiometricEnrolled(currentUserId) : false;
+  const enrolledList = getRegisteredBiometrics().filter((b) => b.enabled);
+  const isFaceType = (biometricType || '').toLowerCase().includes('face');
+  const BiometricIcon = isFaceType ? ScanFace : Fingerprint;
+
+  const handleBiometricLoginInModal = async () => {
+    setErrorMsg('');
+    setSuccessMsg('');
+    setIsSubmitting(true);
+    try {
+      await signInWithBiometrics();
+      setSuccessMsg(`Logged in via ${biometricType}!`);
+      setTimeout(() => onClose(), 1000);
+    } catch (err) {
+      console.warn('Biometric modal login failed:', err);
+      setErrorMsg(err.message || 'Biometric verification failed. Please log in with your email and password.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleToggleBiometrics = (enable) => {
+    if (!currentUserId) return;
+    toggleBiometrics(currentUserId, enable);
+    setSuccessMsg(enable ? `${biometricType} enabled!` : `${biometricType} disabled.`);
+  };
+
+  const handleEnrollBiometrics = async () => {
+    if (!currentUserId) return;
+    setErrorMsg('');
+    setSuccessMsg('');
+    setIsSubmitting(true);
+    try {
+      await registerBiometricsForUser(currentUserId, user.displayName || currentUserId);
+      setSuccessMsg(`Successfully enrolled ${biometricType}!`);
+    } catch (err) {
+      console.warn('Enrollment error:', err);
+      setErrorMsg(err.message || 'Could not register biometrics.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRemoveBiometrics = () => {
+    if (!currentUserId) return;
+    removeBiometrics(currentUserId);
+    setSuccessMsg('Biometric credentials removed from this device.');
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div 
@@ -138,7 +199,7 @@ export default function AuthModal({
                 {user ? 'My Account & Sync' : 'User Account & Cloud Sync'}
               </h2>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                {user ? user.email : 'Sync Google API Key & reminders across all devices'}
+                {user ? user.email : 'Sync active reminders & preferences across all devices'}
               </span>
             </div>
           </div>
@@ -185,18 +246,117 @@ export default function AuthModal({
               <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                 <p>• <b>Account Email:</b> {user.email}</p>
                 <p>
-                  • <b>Google Maps API Key:</b>{' '}
-                  {googleApiKey ? (
-                    <span style={{ color: '#34d399', fontWeight: 700 }}>
-                      ✓ Synced ({googleApiKey.slice(0, 8)}...{googleApiKey.slice(-4)})
-                    </span>
-                  ) : (
-                    <span style={{ color: 'var(--color-amber)' }}>Not set yet</span>
-                  )}
+                  • <b>Map Configuration:</b>{' '}
+                  <span style={{ color: '#34d399', fontWeight: 700 }}>
+                    OpenStreetMap (Default Free Mode)
+                  </span>
                 </p>
                 <p>
-                  • <b>Cross-Device Status:</b> Whenever you log in from your mobile phone or laptop, your Google API Key and saved reminders are fetched automatically!
+                  • <b>Cross-Device Status:</b> Whenever you log in from your mobile phone or laptop, your saved reminders and preferences are fetched automatically!
                 </p>
+              </div>
+            </div>
+
+            {/* Biometric Security Card */}
+            <div
+              style={{
+                background: 'var(--bg-surface-elevated, rgba(255, 255, 255, 0.04))',
+                border: '1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))',
+                borderRadius: 'var(--radius-lg)',
+                padding: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <BiometricIcon size={18} style={{ color: '#f472b6' }} />
+                  <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                    {biometricType}
+                  </span>
+                </div>
+                {enrolled ? (
+                  <span
+                    style={{
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      color: '#34d399',
+                      border: '1px solid rgba(16, 185, 129, 0.4)',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--radius-full)',
+                      fontSize: '0.7rem',
+                      fontWeight: 750,
+                    }}
+                  >
+                    ACTIVE
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      background: 'rgba(148, 163, 184, 0.12)',
+                      color: 'var(--text-muted)',
+                      border: '1px solid var(--border-subtle)',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--radius-full)',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    NOT ENROLLED
+                  </span>
+                )}
+              </div>
+
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.4, margin: 0 }}>
+                {enrolled 
+                  ? `Biometric authentication is active for this account on this device. Your biometrics stay safely in your operating system.`
+                  : `Enable fast, secure biometric sign-in using ${biometricType} on this device.`}
+              </p>
+
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {enrolled ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ fontSize: '0.78rem', padding: '7px 12px', flex: 1 }}
+                      onClick={() => handleToggleBiometrics(false)}
+                    >
+                      Disable Biometric Login
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ fontSize: '0.78rem', padding: '7px 12px', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                      onClick={handleRemoveBiometrics}
+                    >
+                      Remove
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{
+                      fontSize: '0.8rem',
+                      padding: '8px 14px',
+                      width: '100%',
+                      background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(236, 72, 153, 0.15))',
+                      borderColor: 'rgba(236, 72, 153, 0.4)',
+                      color: 'var(--text-primary)',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                    }}
+                    onClick={handleEnrollBiometrics}
+                    disabled={isSubmitting}
+                  >
+                    <BiometricIcon size={15} color="#f472b6" />
+                    <span>Enable {biometricType} on this Device</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -277,7 +437,7 @@ export default function AuthModal({
             >
               <Sparkles size={16} color="var(--color-pink)" style={{ flexShrink: 0 }} />
               <span>
-                <b>Never re-enter your API key!</b> Set it once on any device, and your phone will sync it automatically when you log in.
+                <b>Cross-Device Cloud Sync:</b> Sign in to synchronize your active geofenced reminders, preferences, and custom spots seamlessly across all your devices.
               </span>
             </div>
 
@@ -321,6 +481,41 @@ export default function AuthModal({
             )}
 
             {/* TAB: LOGIN / SIGNUP / RESET */}
+            {mode === 'login' && (biometricAvailable || enrolledList.length > 0) && (
+              <div style={{ marginBottom: '4px' }}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={handleBiometricLoginInModal}
+                  disabled={isSubmitting}
+                  style={{
+                    width: '100%',
+                    padding: '11px 16px',
+                    fontSize: '0.88rem',
+                    fontWeight: 750,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.18), rgba(236, 72, 153, 0.18))',
+                    border: '1.5px solid rgba(236, 72, 153, 0.4)',
+                    color: 'var(--text-primary)',
+                    borderRadius: 'var(--radius-md)',
+                    boxShadow: '0 2px 10px rgba(236, 72, 153, 0.15)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <BiometricIcon size={18} color="#f472b6" className={isSubmitting ? 'pulse-anim' : ''} />
+                  <span>Sign in with {biometricType}</span>
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', opacity: 0.5 }}>
+                  <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border-subtle)' }} />
+                  <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-muted)' }}>OR ENTER EMAIL & PASSWORD</span>
+                  <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border-subtle)' }} />
+                </div>
+              </div>
+            )}
+
             {mode !== 'config' ? (
               <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {mode === 'signup' && (
@@ -367,7 +562,7 @@ export default function AuthModal({
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        minLength={6}
+                        minLength={8}
                       />
                     </div>
                   </div>

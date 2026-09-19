@@ -3,6 +3,16 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext'
+import { isNative } from './services/nativeLocation'
+
+if (typeof window !== 'undefined') {
+  if (isNative()) {
+    document.documentElement.classList.add('platform-native');
+  }
+  if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+    document.documentElement.classList.add('display-standalone');
+  }
+}
 
 class ErrorBoundary extends Component {
   constructor(props) {

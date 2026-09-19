@@ -1,14 +1,31 @@
 /**
  * Local & Cloud Authentication Service for GeoRemind
- * Provides out-of-the-box local user accounts (User ID + Password)
- * with per-user data isolation and optional Supabase cloud synchronization.
+ * Provides hardened client-side authentication (User ID + Password)
+ * with per-user cryptographic salt (PBKDF2-HMAC-SHA-256),
+ * per-user data isolation, and optional Supabase cloud synchronization.
  */
 
 const ACCOUNTS_STORAGE_KEY = 'georemind_user_accounts_v2';
 const ACTIVE_USER_KEY = 'georemind_active_session_v2';
 
-// Simple client-side hash helper for password storage
-function hashPassword(str) {
+// Convert Uint8Array to Hex string
+function bytesToHex(bytes) {
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+// Convert Hex string to Uint8Array
+function hexToBytes(hex) {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+  }
+  return bytes;
+}
+
+// Legacy hash helper (used exclusively to verify and migrate old account records)
+function legacyHashPassword(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
@@ -16,6 +33,89 @@ function hashPassword(str) {
     hash |= 0; // Convert to 32bit integer
   }
   return 'h_' + Math.abs(hash).toString(36) + '_' + btoa(str.slice(0, 3) + str.length);
+}
+
+/**
+ * Standard Cryptographic Password KDF using PBKDF2-HMAC-SHA-256 with per-user salt
+ */
+export async function derivePasswordHash(password, existingSaltHex = null) {
+  const iterations = 100000;
+  const encoder = new TextEncoder();
+  const passwordBuffer = encoder.encode(password);
+
+  const cryptoObj = (typeof window !== 'undefined' && window.crypto) || (typeof globalThis !== 'undefined' && globalThis.crypto) || null;
+
+  let saltBytes;
+  if (existingSaltHex) {
+    saltBytes = hexToBytes(existingSaltHex);
+  } else {
+    saltBytes = new Uint8Array(16);
+    if (cryptoObj?.getRandomValues) {
+      cryptoObj.getRandomValues(saltBytes);
+    } else {
+      for (let i = 0; i < 16; i++) {
+        saltBytes[i] = Math.floor(Math.random() * 256);
+      }
+    }
+  }
+
+  if (cryptoObj?.subtle) {
+    try {
+      const keyMaterial = await cryptoObj.subtle.importKey(
+        'raw',
+        passwordBuffer,
+        { name: 'PBKDF2' },
+        false,
+        ['deriveBits', 'deriveKey']
+      );
+
+      const derivedKey = await cryptoObj.subtle.deriveBits(
+        {
+          name: 'PBKDF2',
+          salt: saltBytes,
+          iterations,
+          hash: 'SHA-256',
+        },
+        keyMaterial,
+        256
+      );
+
+      const hashHex = bytesToHex(new Uint8Array(derivedKey));
+      const saltHex = bytesToHex(saltBytes);
+      return `pbkdf2:${iterations}:${saltHex}:${hashHex}`;
+    } catch (err) {
+      console.warn('SubtleCrypto PBKDF2 error, using fallback:', err);
+    }
+  }
+
+  // Fallback if subtle crypto is unavailable
+  const saltHex = bytesToHex(saltBytes);
+  return `pbkdf2:1:${saltHex}:${legacyHashPassword(password + saltHex)}`;
+}
+
+/**
+ * Verify a candidate password against stored hash record (with legacy migration support)
+ */
+export async function verifyPasswordHash(candidatePassword, storedHashRecord) {
+  if (!storedHashRecord || !candidatePassword) return false;
+
+  // 1. Standard PBKDF2 hash check
+  if (storedHashRecord.startsWith('pbkdf2:')) {
+    const parts = storedHashRecord.split(':');
+    if (parts.length === 4) {
+      const saltHex = parts[2];
+      const candidateHashRecord = await derivePasswordHash(candidatePassword, saltHex);
+      return candidateHashRecord === storedHashRecord;
+    }
+  }
+
+  // 2. Legacy hash check (e.g. h_...)
+  if (storedHashRecord.startsWith('h_')) {
+    const legacyExpected = legacyHashPassword(candidatePassword);
+    return storedHashRecord === legacyExpected;
+  }
+
+  return false;
 }
 
 /**
@@ -77,7 +177,7 @@ export function persistActiveUser(user) {
 /**
  * Register a new user with custom User ID and Password
  */
-export function registerLocalAccount({ userId, password, displayName }) {
+export async function registerLocalAccount({ userId, password, displayName }) {
   const cleanId = (userId || '').trim().toLowerCase();
   const cleanPassword = (password || '').trim();
   const cleanName = (displayName || '').trim() || cleanId;
@@ -88,8 +188,8 @@ export function registerLocalAccount({ userId, password, displayName }) {
   if (cleanId.length < 3) {
     throw new Error('User ID must be at least 3 characters long.');
   }
-  if (!cleanPassword || cleanPassword.length < 4) {
-    throw new Error('Password must be at least 4 characters long.');
+  if (!cleanPassword || cleanPassword.length < 8) {
+    throw new Error('Password must be at least 8 characters long for security.');
   }
 
   const accounts = getStoredAccounts();
@@ -98,15 +198,17 @@ export function registerLocalAccount({ userId, password, displayName }) {
   );
 
   if (existing) {
-    throw new Error(`User ID "${cleanId}" is already registered. Please log in or choose a different ID.`);
+    throw new Error(`User ID "${cleanId}" is already registered. Please log in with your existing account.`);
   }
+
+  const passwordHash = await derivePasswordHash(cleanPassword);
 
   const newAccount = {
     id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
     userId: cleanId,
     email: cleanId.includes('@') ? cleanId : `${cleanId}@georemind.local`,
     displayName: cleanName,
-    passwordHash: hashPassword(cleanPassword),
+    passwordHash,
     createdAt: new Date().toISOString(),
     lastLoginAt: new Date().toISOString(),
   };
@@ -129,7 +231,7 @@ export function registerLocalAccount({ userId, password, displayName }) {
 /**
  * Log in with existing User ID / Username / Email and Password
  */
-export function loginLocalAccount({ userId, password }) {
+export async function loginLocalAccount({ userId, password }) {
   const cleanId = (userId || '').trim().toLowerCase();
   const cleanPassword = (password || '').trim();
 
@@ -146,15 +248,57 @@ export function loginLocalAccount({ userId, password }) {
   );
 
   if (!account) {
-    throw new Error(`No account found for "${cleanId}". Please check your ID or click "Create Account".`);
+    throw new Error(`No account found for "${cleanId}". Please check your credentials or create an account.`);
   }
 
-  const expectedHash = hashPassword(cleanPassword);
-  if (account.passwordHash !== expectedHash) {
+  const isValid = await verifyPasswordHash(cleanPassword, account.passwordHash);
+  if (!isValid) {
     throw new Error('Incorrect password. Please try again.');
   }
 
+  // Automatic Migration: If user was using legacy hash, seamlessly upgrade to PBKDF2
+  if (account.passwordHash && account.passwordHash.startsWith('h_')) {
+    try {
+      account.passwordHash = await derivePasswordHash(cleanPassword);
+    } catch (migErr) {
+      console.warn('Password hash migration error:', migErr);
+    }
+  }
+
   // Update last login
+  account.lastLoginAt = new Date().toISOString();
+  saveAccounts(accounts);
+
+  const sessionUser = {
+    id: account.id,
+    userId: account.userId,
+    email: account.email,
+    displayName: account.displayName || account.userId,
+    isLocal: true,
+  };
+
+  persistActiveUser(sessionUser);
+  return sessionUser;
+}
+
+/**
+ * Log in directly by verified User ID (used after successful Biometric Authentication)
+ */
+export function loginLocalAccountById(userId) {
+  const cleanId = (userId || '').trim().toLowerCase();
+  if (!cleanId) {
+    throw new Error('User ID is required.');
+  }
+
+  const accounts = getStoredAccounts();
+  const account = accounts.find(
+    (acc) => acc.userId.toLowerCase() === cleanId || (acc.email && acc.email.toLowerCase() === cleanId)
+  );
+
+  if (!account) {
+    throw new Error(`Account "${cleanId}" not found.`);
+  }
+
   account.lastLoginAt = new Date().toISOString();
   saveAccounts(accounts);
 
@@ -192,3 +336,4 @@ export function createGuestSession() {
 export function logoutLocalAccount() {
   persistActiveUser(null);
 }
+

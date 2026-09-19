@@ -52,6 +52,10 @@ public class BackgroundLocationService extends Service implements LocationListen
     private PowerManager.WakeLock wakeLock;
     private boolean isTracking = false;
 
+    // Watchdog pulse to keep GPS and geofences evaluated when screen is locked in pocket
+    private final android.os.Handler watchdogHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private long lastLocationTimestamp = System.currentTimeMillis();
+
     // Cooldown map: reminderId -> lastTriggerTimestamp
     private final Map<String, Long> geofenceCooldownMap = new HashMap<>();
     private final Map<String, Boolean> geofenceInsideMap = new HashMap<>();
@@ -136,6 +140,7 @@ public class BackgroundLocationService extends Service implements LocationListen
             alertChannel.enableVibration(true);
             alertChannel.setVibrationPattern(new long[]{0, 500, 200, 500, 200, 800});
             alertChannel.enableLights(true);
+            alertChannel.setLightColor(0xFF38BDF8); // Cyan/Sky blue for Samsung Edge Lighting & LED
             alertChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
             alertChannel.setBypassDnd(true);
 
@@ -201,7 +206,16 @@ public class BackgroundLocationService extends Service implements LocationListen
             if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
                 locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, minTimeMs, minDistanceM, this);
             }
+            // Passive provider catches opportunistic fixes from Google Maps, Samsung Health, etc.
+            if (locationManager.isProviderEnabled(LocationManager.PASSIVE_PROVIDER)) {
+                locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, minTimeMs, minDistanceM, this);
+            }
             isTracking = true;
+
+            // Start watchdog pulse to ensure GPS updates keep evaluating in pocket/screen-off
+            watchdogHandler.removeCallbacks(watchdogRunnable);
+            watchdogHandler.postDelayed(watchdogRunnable, 30000);
+
             Log.d(TAG, "Background location tracking started successfully.");
         } catch (SecurityException e) {
             Log.e(TAG, "SecurityException requesting background location updates: " + e.getMessage());
@@ -210,7 +224,40 @@ public class BackgroundLocationService extends Service implements LocationListen
         }
     }
 
+    private final Runnable watchdogRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isTracking) return;
+            long now = System.currentTimeMillis();
+            // If phone hasn't received a location update in > 40s (e.g. Samsung deep sleep / screen off in pocket)
+            if (now - lastLocationTimestamp > 40000) {
+                checkLastKnownLocation();
+            }
+            watchdogHandler.postDelayed(this, 30000);
+        }
+    };
+
+    private void checkLastKnownLocation() {
+        if (locationManager == null) return;
+        try {
+            Location best = null;
+            for (String provider : locationManager.getProviders(true)) {
+                Location l = locationManager.getLastKnownLocation(provider);
+                if (l != null && (best == null || l.getTime() > best.getTime())) {
+                    best = l;
+                }
+            }
+            if (best != null && (System.currentTimeMillis() - best.getTime()) < 180000) {
+                onLocationChanged(best);
+            }
+        } catch (SecurityException ignored) {
+        } catch (Exception ignored) {
+        }
+    }
+
     private void stopLocationUpdates() {
+        watchdogHandler.removeCallbacks(watchdogRunnable);
+
         if (locationManager != null) {
             try {
                 locationManager.removeUpdates(this);
@@ -241,6 +288,7 @@ public class BackgroundLocationService extends Service implements LocationListen
     @Override
     public void onLocationChanged(Location location) {
         if (location == null) return;
+        lastLocationTimestamp = System.currentTimeMillis();
 
         // 1. Notify static JS callback if app is active/alive
         if (staticCallback != null) {
@@ -398,16 +446,15 @@ public class BackgroundLocationService extends Service implements LocationListen
 
             NotificationCompat.Builder alertBuilder = new NotificationCompat.Builder(this, CHANNEL_ID_ALERTS)
                     .setSmallIcon(android.R.drawable.ic_dialog_map)
+                    .setColor(0xFF38BDF8)
                     .setContentTitle(alertTitle)
                     .setContentText(alertBody)
                     .setStyle(new NotificationCompat.BigTextStyle().bigText(alertBody))
-                    .setCategory(NotificationCompat.CATEGORY_ALARM)
-                    .setPriority(NotificationCompat.PRIORITY_MAX)
+                    .setCategory(NotificationCompat.CATEGORY_EVENT)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                     .setAutoCancel(true)
                     .setVibrate(new long[]{0, 500, 200, 500, 200, 800})
-                    .setDefaults(Notification.DEFAULT_ALL)
-                    .setFullScreenIntent(pendingIntent, true)
                     .setContentIntent(pendingIntent);
 
             manager.notify(notifId, alertBuilder.build());

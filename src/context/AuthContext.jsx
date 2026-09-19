@@ -14,10 +14,23 @@ import {
   persistActiveUser,
   registerLocalAccount,
   loginLocalAccount,
+  loginLocalAccountById,
   logoutLocalAccount,
   createGuestSession,
   getStoredAccounts
 } from '../services/localAuth';
+import {
+  isWebAuthnSupported,
+  isPlatformAuthenticatorAvailable,
+  getBiometricTypeName,
+  isBiometricEnrolled,
+  getEnrolledBiometric,
+  setBiometricEnabled,
+  removeBiometricCredential,
+  registerBiometric,
+  verifyBiometric,
+  getRegisteredBiometrics
+} from '../services/biometrics';
 
 const AuthContext = createContext(null);
 
@@ -26,6 +39,9 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isConfigured, setIsConfigured] = useState(() => isSupabaseConfigured());
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricType, setBiometricType] = useState(() => getBiometricTypeName());
+  const [pendingBiometricPrompt, setPendingBiometricPrompt] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -64,6 +80,17 @@ export function AuthProvider({ children }) {
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
+      } finally {
+        if (isMounted) {
+          try {
+            const supported = isWebAuthnSupported();
+            const platformReady = supported ? await isPlatformAuthenticatorAvailable() : false;
+            setBiometricAvailable(supported);
+            setBiometricType(getBiometricTypeName());
+          } catch (bioErr) {
+            console.warn('Biometric detection error:', bioErr);
+          }
+        }
       }
     };
 
@@ -120,27 +147,20 @@ export function AuthProvider({ children }) {
       }
     }
 
-    // Register local account
-    try {
-      const localUser = registerLocalAccount({
-        userId: identifier,
-        password,
-        displayName,
+    // Register local account (strict: does not auto-login if account already exists)
+    const localUser = await registerLocalAccount({
+      userId: identifier,
+      password,
+      displayName,
+    });
+    setUser(localUser);
+    if (biometricAvailable && !isBiometricEnrolled(localUser.userId)) {
+      setPendingBiometricPrompt({
+        userId: localUser.userId,
+        displayName: localUser.displayName || localUser.userId,
       });
-      setUser(localUser);
-      return { user: localUser };
-    } catch (regErr) {
-      // If already registered, seamlessly log in
-      if (regErr.message.includes('already registered')) {
-        const localUser = loginLocalAccount({
-          userId: identifier,
-          password,
-        });
-        setUser(localUser);
-        return { user: localUser };
-      }
-      throw regErr;
     }
+    return { user: localUser };
   };
 
   const signIn = async (identifier, password) => {
@@ -156,6 +176,12 @@ export function AuthProvider({ children }) {
             isLocal: false,
           };
           setUser(userObj);
+          if (biometricAvailable && !isBiometricEnrolled(userObj.userId)) {
+            setPendingBiometricPrompt({
+              userId: userObj.userId,
+              displayName: userObj.displayName || userObj.userId,
+            });
+          }
           return data;
         }
       } catch (err) {
@@ -163,27 +189,52 @@ export function AuthProvider({ children }) {
       }
     }
 
-    // Local login with auto-create fallback
-    try {
-      const localUser = loginLocalAccount({
-        userId: identifier,
-        password,
+    // Local login (strict: does not auto-create account on failed login)
+    const localUser = await loginLocalAccount({
+      userId: identifier,
+      password,
+    });
+    setUser(localUser);
+    if (biometricAvailable && !isBiometricEnrolled(localUser.userId)) {
+      setPendingBiometricPrompt({
+        userId: localUser.userId,
+        displayName: localUser.displayName || localUser.userId,
       });
-      setUser(localUser);
-      return { user: localUser };
-    } catch (loginErr) {
-      // If account does not exist yet, automatically create it on the spot!
-      if (loginErr.message.includes('No account found')) {
-        const newUser = registerLocalAccount({
-          userId: identifier,
-          password: password || '1234',
-          displayName: identifier,
-        });
-        setUser(newUser);
-        return { user: newUser };
-      }
-      throw loginErr;
     }
+    return { user: localUser };
+  };
+
+  const signInWithBiometrics = async (targetUserId = null) => {
+    setLoading(true);
+    try {
+      const assertion = await verifyBiometric(targetUserId);
+      if (!assertion || !assertion.userId) {
+        throw new Error('Biometric verification failed.');
+      }
+      const localUser = loginLocalAccountById(assertion.userId);
+      setUser(localUser);
+      return { user: localUser, biometric: assertion };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const registerBiometricsForUser = async (userId, displayName) => {
+    const cred = await registerBiometric({ userId, displayName });
+    setPendingBiometricPrompt(null);
+    return cred;
+  };
+
+  const toggleBiometrics = (userId, enabled) => {
+    setBiometricEnabled(userId, enabled);
+  };
+
+  const removeBiometrics = (userId) => {
+    removeBiometricCredential(userId);
+  };
+
+  const dismissBiometricPrompt = () => {
+    setPendingBiometricPrompt(null);
   };
 
   const continueAsGuest = () => {
@@ -218,8 +269,19 @@ export function AuthProvider({ children }) {
     session,
     loading,
     isConfigured,
-    signUp,
+    biometricAvailable,
+    biometricType,
+    pendingBiometricPrompt,
     signIn,
+    signUp,
+    signInWithBiometrics,
+    registerBiometricsForUser,
+    toggleBiometrics,
+    removeBiometrics,
+    dismissBiometricPrompt,
+    isBiometricEnrolled,
+    getEnrolledBiometric,
+    getRegisteredBiometrics,
     continueAsGuest,
     signOut,
     resetPassword,

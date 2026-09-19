@@ -12,7 +12,8 @@ import {
   Play, 
   Zap,
   Sliders,
-  Compass
+  Compass,
+  Smartphone
 } from 'lucide-react';
 import { MAP_PROVIDERS } from '../services/mapProviders';
 import { BATTERY_MODES } from '../services/nativeLocation';
@@ -25,6 +26,7 @@ export default function MapSettingsModal({
   onSaveConfig,
   settings,
   onSaveSettings,
+  onOpenDeviceOptimization,
 }) {
   const [activeTab, setActiveTab] = useState('map'); // 'map', 'battery', 'sound'
 
@@ -357,6 +359,47 @@ export default function MapSettingsModal({
                 <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
                   <strong style={{ color: '#fbbf24' }}>Pocket & Travel Mode:</strong> Use the lightning toggle (⚡) in the header to activate continuous screen wake lock so Android never puts the GPS to sleep while you are on the road.
                 </div>
+              </div>
+
+              {/* Samsung Galaxy & Device Optimization Assistant */}
+              <div
+                style={{
+                  background: 'rgba(56, 189, 248, 0.08)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Smartphone size={18} color="#38bdf8" />
+                  <span style={{ fontWeight: 800, fontSize: '0.85rem', color: '#38bdf8' }}>
+                    Samsung Galaxy & Device Assistant
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                  Configure One UI background usage limits, Unrestricted battery mode, and verify overnight auto-restart persistence.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose?.();
+                    onOpenDeviceOptimization?.();
+                  }}
+                  className="btn btn-secondary"
+                  style={{
+                    fontSize: '0.78rem',
+                    padding: '6px 12px',
+                    borderColor: 'rgba(56, 189, 248, 0.4)',
+                    color: '#38bdf8',
+                    marginTop: '4px',
+                    fontWeight: 700,
+                  }}
+                >
+                  📱 Open Samsung & Device Assistant
+                </button>
               </div>
             </div>
           )}
